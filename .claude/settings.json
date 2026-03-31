@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\ca375\\Projects\\aero-claude\\aero-front\\src\\__tests__\\pact"
+    ]
+  }
+}

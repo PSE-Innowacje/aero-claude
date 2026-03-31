@@ -1,0 +1,3946 @@
+{
+  "consumer": {
+    "name": "AeroFront"
+  },
+  "interactions": [
+    {
+      "description": "a login request with valid credentials",
+      "providerStates": [
+        {
+          "name": "user admin@example.com exists with password Test123!"
+        }
+      ],
+      "request": {
+        "body": {
+          "email": "admin@example.com",
+          "haslo": "Test123!"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/auth/login"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "refreshToken": "rt_abc123",
+            "token": "eyJ...",
+            "uzytkownik": {
+              "aktywny": true,
+              "email": "admin@example.com",
+              "id": 1,
+              "imie": "Jan",
+              "nazwisko": "Kowalski",
+              "rolaId": 1,
+              "rolaNazwa": "Administrator"
+            }
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.refreshToken": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.token": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.aktywny": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.uzytkownik.imie": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.nazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.rolaId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.uzytkownik.rolaNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a login request with wrong password",
+      "providerStates": [
+        {
+          "name": "user admin@example.com exists with password Test123!"
+        }
+      ],
+      "request": {
+        "body": {
+          "email": "admin@example.com",
+          "haslo": "WrongPass"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/auth/login"
+      },
+      "response": {
+        "body": {
+          "data": null,
+          "errors": [
+            "Nieprawidłowy e-mail lub hasło."
+          ],
+          "success": false
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.errors": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 401
+      }
+    },
+    {
+      "description": "a request for all helicopters",
+      "providerStates": [
+        {
+          "name": "helicopters exist"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/helikoptery"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "dataWaznosciPrzegladu": "2026-12-31",
+              "id": 1,
+              "maksLiczbaCzlonkowZalogi": 4,
+              "maksUdzwigKg": 1200,
+              "numerRejestracyjny": "SP-ABC",
+              "opis": "Helikopter ratunkowy",
+              "status": "Aktywny",
+              "typ": "Bell 407",
+              "zasiegKm": 600
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].dataWaznosciPrzegladu": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].maksLiczbaCzlonkowZalogi": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].maksUdzwigKg": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].numerRejestracyjny": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].opis": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].typ": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].zasiegKm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for all users",
+      "providerStates": [
+        {
+          "name": "users exist"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/uzytkownicy"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "aktywny": true,
+              "email": "jan@example.com",
+              "id": 1,
+              "imie": "Jan",
+              "nazwisko": "Kowalski",
+              "rolaId": 1,
+              "rolaNazwa": "Administrator"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].aktywny": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].imie": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].nazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].rolaId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].rolaNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for flight order by id",
+      "providerStates": [
+        {
+          "name": "flight order with id 1 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/zlecenia/1"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "createdAt": "2026-03-30T10:00:00",
+            "czlonkowieZalogiIds": [
+              1
+            ],
+            "czlonkowieZalogiImiona": [
+              "Jan Kowalski"
+            ],
+            "helikopterId": 1,
+            "helikopterNr": "SP-ABC",
+            "id": 1,
+            "ladowiskoKoncoweId": 2,
+            "ladowiskoKoncoweNazwa": "Punkt B",
+            "ladowiskoStartoweId": 1,
+            "ladowiskoStartoweNazwa": "Baza Główna",
+            "numer": "ZL-2026-001",
+            "operacje": [
+              {
+                "id": 1,
+                "numer": "OP-2026-001",
+                "opisSkrocony": "Inspekcja terenu",
+                "statusId": 4,
+                "statusNazwa": "Zaplanowane do zlecenia"
+              }
+            ],
+            "pilotId": 1,
+            "pilotImieNazwisko": "Jan Kowalski",
+            "planowaneLadowanieDt": "2026-04-10T12:00:00",
+            "planowanyStartDt": "2026-04-10T08:00:00",
+            "rzeczywisteLadowanieDt": null,
+            "rzeczywistyStartDt": null,
+            "statusId": 1,
+            "statusNazwa": "Wprowadzone",
+            "szacowanaDlugoscTrasy": 120,
+            "updatedAt": "2026-03-30T10:00:00",
+            "wagaZalogiKg": 320
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.czlonkowieZalogiIds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.czlonkowieZalogiImiona": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.helikopterId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.helikopterNr": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.ladowiskoKoncoweId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.ladowiskoKoncoweNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.ladowiskoStartoweId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.ladowiskoStartoweNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.operacje": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.operacje[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.operacje[*].numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.operacje[*].opisSkrocony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.operacje[*].statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.operacje[*].statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.pilotId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.pilotImieNazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.planowaneLadowanieDt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.planowanyStartDt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.szacowanaDlugoscTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.wagaZalogiKg": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for flight order history",
+      "providerStates": [
+        {
+          "name": "flight order with id 1 has change history"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/zlecenia/1/historia"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "dataZmiany": "2026-03-30T14:00:00",
+              "id": 1,
+              "nowaWartosc": "Przekazane do akceptacji",
+              "pole": "Status",
+              "staraWartosc": "Wprowadzone",
+              "zmienionePrzezEmail": "admin@example.com"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].dataZmiany": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nowaWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].pole": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].staraWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].zmienionePrzezEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for helicopter by id",
+      "providerStates": [
+        {
+          "name": "helicopter with id 1 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/helikoptery/1"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "dataWaznosciPrzegladu": "2026-12-31",
+            "id": 1,
+            "maksLiczbaCzlonkowZalogi": 4,
+            "maksUdzwigKg": 1200,
+            "numerRejestracyjny": "SP-ABC",
+            "opis": "Helikopter ratunkowy",
+            "status": "Aktywny",
+            "typ": "Bell 407",
+            "zasiegKm": 600
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.dataWaznosciPrzegladu": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.maksLiczbaCzlonkowZalogi": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.maksUdzwigKg": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.numerRejestracyjny": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.opis": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.status": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.typ": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.zasiegKm": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for operation by id",
+      "providerStates": [
+        {
+          "name": "operation with id 1 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje/1"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "createdAt": "2026-03-30T10:00:00",
+            "dodatkoweInfo": "Uwagi dodatkowe",
+            "id": 1,
+            "kmlNazwaPliku": "trasa.kml",
+            "kmlZawartosc": "<kml>...</kml>",
+            "komentarz": "",
+            "liczbaKmTrasy": 50,
+            "numer": "OP-2026-001",
+            "numerZleceniaProjektu": "ZP-001",
+            "opisSkrocony": "Inspekcja terenu",
+            "osobyKontaktoweIds": [
+              1
+            ],
+            "planowanaDataDo": "2026-04-04",
+            "planowanaDataOd": "2026-04-02",
+            "proponowanaDataDo": "2026-04-05",
+            "proponowanaDataOd": "2026-04-01",
+            "punktyTrasy": [
+              {
+                "dlugosc": 17,
+                "kolejnosc": 1,
+                "szerokosc": 51.1
+              }
+            ],
+            "rodzajeCzynnosciIds": [
+              1
+            ],
+            "rodzajeCzynnosciNazwy": [
+              "Inspekcja"
+            ],
+            "statusId": 1,
+            "statusNazwa": "Wprowadzone",
+            "updatedAt": "2026-03-30T10:00:00",
+            "uwagiPoRealizacji": "",
+            "wprowadzajacyEmail": "admin@example.com",
+            "wprowadzajacyId": 1
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.dodatkoweInfo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.kmlNazwaPliku": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.kmlZawartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.komentarz": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.liczbaKmTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.numerZleceniaProjektu": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.opisSkrocony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.osobyKontaktoweIds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.planowanaDataDo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.planowanaDataOd": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.proponowanaDataDo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.proponowanaDataOd": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.punktyTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.punktyTrasy[*].dlugosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.data.punktyTrasy[*].kolejnosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.punktyTrasy[*].szerokosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.data.rodzajeCzynnosciIds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.rodzajeCzynnosciNazwy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uwagiPoRealizacji": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.wprowadzajacyEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.wprowadzajacyId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for operation comments",
+      "providerStates": [
+        {
+          "name": "operation with id 1 has comments"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje/1/komentarze"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "autorEmail": "admin@example.com",
+              "createdAt": "2026-03-30T10:00:00",
+              "id": 1,
+              "tresc": "Komentarz testowy"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].autorEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].tresc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for operation history",
+      "providerStates": [
+        {
+          "name": "operation with id 1 has change history"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje/1/historia"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "dataZmiany": "2026-03-30T12:00:00",
+              "id": 1,
+              "nowaWartosc": "Potwierdzone do planowania",
+              "pole": "Status",
+              "staraWartosc": "Wprowadzone",
+              "zmienionePrzezEmail": "admin@example.com"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].dataZmiany": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nowaWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].pole": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].staraWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].zmienionePrzezEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for paged flight orders",
+      "providerStates": [
+        {
+          "name": "flight orders exist"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/zlecenia",
+        "query": {
+          "rozmiarStrony": [
+            "20"
+          ],
+          "strona": [
+            "1"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "data": {
+            "items": [
+              {
+                "helikopterNr": "SP-ABC",
+                "id": 1,
+                "numer": "ZL-2026-001",
+                "pilotImieNazwisko": "Jan Kowalski",
+                "planowanyStartDt": "2026-04-10T08:00:00",
+                "statusId": 1,
+                "statusNazwa": "Wprowadzone"
+              }
+            ],
+            "lacznaLiczba": 1,
+            "lacznaLiczbaStron": 1,
+            "maNastepna": false,
+            "maPoprzednia": false,
+            "rozmiarStrony": 20,
+            "strona": 1
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.items[*].helikopterNr": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.items[*].numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].pilotImieNazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].planowanyStartDt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.items[*].statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.lacznaLiczba": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.lacznaLiczbaStron": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.maNastepna": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.maPoprzednia": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.rozmiarStrony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.strona": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for flight order by id",
+      "providerStates": [
+        {
+          "name": "flight order with id 1 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/zlecenia/1"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "createdAt": "2026-03-30T10:00:00",
+            "czlonkowieZalogiIds": [
+              1
+            ],
+            "czlonkowieZalogiImiona": [
+              "Jan Kowalski"
+            ],
+            "helikopterId": 1,
+            "helikopterNr": "SP-ABC",
+            "id": 1,
+            "ladowiskoKoncoweId": 2,
+            "ladowiskoKoncoweNazwa": "Punkt B",
+            "ladowiskoStartoweId": 1,
+            "ladowiskoStartoweNazwa": "Baza Główna",
+            "numer": "ZL-2026-001",
+            "operacje": [
+              {
+                "id": 1,
+                "numer": "OP-2026-001",
+                "opisSkrocony": "Inspekcja terenu",
+                "statusId": 4,
+                "statusNazwa": "Zaplanowane do zlecenia"
+              }
+            ],
+            "pilotId": 1,
+            "pilotImieNazwisko": "Jan Kowalski",
+            "planowaneLadowanieDt": "2026-04-10T12:00:00",
+            "planowanyStartDt": "2026-04-10T08:00:00",
+            "rzeczywisteLadowanieDt": null,
+            "rzeczywistyStartDt": null,
+            "statusId": 1,
+            "statusNazwa": "Wprowadzone",
+            "szacowanaDlugoscTrasy": 120,
+            "updatedAt": "2026-03-30T10:00:00",
+            "wagaZalogiKg": 320
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.czlonkowieZalogiIds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.czlonkowieZalogiImiona": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.helikopterId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.helikopterNr": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.ladowiskoKoncoweId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.ladowiskoKoncoweNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.ladowiskoStartoweId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.ladowiskoStartoweNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.operacje": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.operacje[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.operacje[*].numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.operacje[*].opisSkrocony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.operacje[*].statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.operacje[*].statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.pilotId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.pilotImieNazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.planowaneLadowanieDt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.planowanyStartDt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.szacowanaDlugoscTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.wagaZalogiKg": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for paged operations",
+      "providerStates": [
+        {
+          "name": "operations exist"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje",
+        "query": {
+          "rozmiarStrony": [
+            "20"
+          ],
+          "strona": [
+            "1"
+          ]
+        }
+      },
+      "response": {
+        "body": {
+          "data": {
+            "items": [
+              {
+                "id": 1,
+                "liczbaKmTrasy": 50,
+                "numer": "OP-2026-001",
+                "numerZleceniaProjektu": "ZP-001",
+                "opisSkrocony": "Inspekcja terenu",
+                "planowanaDataDo": "2026-04-04",
+                "planowanaDataOd": "2026-04-02",
+                "proponowanaDataDo": "2026-04-05",
+                "proponowanaDataOd": "2026-04-01",
+                "rodzajeCzynnosci": [
+                  "Inspekcja"
+                ],
+                "statusId": 1,
+                "statusNazwa": "Wprowadzone"
+              }
+            ],
+            "lacznaLiczba": 1,
+            "lacznaLiczbaStron": 1,
+            "maNastepna": false,
+            "maPoprzednia": false,
+            "rozmiarStrony": 20,
+            "strona": 1
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.items[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.items[*].liczbaKmTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.items[*].numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].numerZleceniaProjektu": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].opisSkrocony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].planowanaDataDo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].planowanaDataOd": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].proponowanaDataDo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].proponowanaDataOd": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.items[*].rodzajeCzynnosci": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.items[*].statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.items[*].statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.lacznaLiczba": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.lacznaLiczbaStron": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.maNastepna": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.maPoprzednia": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.rozmiarStrony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.strona": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for operation by id",
+      "providerStates": [
+        {
+          "name": "operation with id 1 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje/1"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "createdAt": "2026-03-30T10:00:00",
+            "dodatkoweInfo": "Uwagi dodatkowe",
+            "id": 1,
+            "kmlNazwaPliku": "trasa.kml",
+            "kmlZawartosc": "<kml>...</kml>",
+            "komentarz": "",
+            "liczbaKmTrasy": 50,
+            "numer": "OP-2026-001",
+            "numerZleceniaProjektu": "ZP-001",
+            "opisSkrocony": "Inspekcja terenu",
+            "osobyKontaktoweIds": [
+              1
+            ],
+            "planowanaDataDo": "2026-04-04",
+            "planowanaDataOd": "2026-04-02",
+            "proponowanaDataDo": "2026-04-05",
+            "proponowanaDataOd": "2026-04-01",
+            "punktyTrasy": [
+              {
+                "dlugosc": 17,
+                "kolejnosc": 1,
+                "szerokosc": 51.1
+              }
+            ],
+            "rodzajeCzynnosciIds": [
+              1
+            ],
+            "rodzajeCzynnosciNazwy": [
+              "Inspekcja"
+            ],
+            "statusId": 1,
+            "statusNazwa": "Wprowadzone",
+            "updatedAt": "2026-03-30T10:00:00",
+            "uwagiPoRealizacji": "",
+            "wprowadzajacyEmail": "admin@example.com",
+            "wprowadzajacyId": 1
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.dodatkoweInfo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.kmlNazwaPliku": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.kmlZawartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.komentarz": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.liczbaKmTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.numer": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.numerZleceniaProjektu": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.opisSkrocony": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.osobyKontaktoweIds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.planowanaDataDo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.planowanaDataOd": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.proponowanaDataDo": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.proponowanaDataOd": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.punktyTrasy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.punktyTrasy[*].dlugosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.data.punktyTrasy[*].kolejnosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.punktyTrasy[*].szerokosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "decimal"
+                }
+              ]
+            },
+            "$.data.rodzajeCzynnosciIds": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.rodzajeCzynnosciNazwy": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data.statusId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.statusNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.updatedAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uwagiPoRealizacji": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.wprowadzajacyEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.wprowadzajacyId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for rodzaje czynności",
+      "providerStates": [
+        {
+          "name": "dictionaries are populated"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/slowniki/rodzaje-czynnosci"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "nazwa": "Nazwa"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for role użytkowników",
+      "providerStates": [
+        {
+          "name": "dictionaries are populated"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/slowniki/role-uzytkownikow"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "nazwa": "Nazwa"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for role załogi",
+      "providerStates": [
+        {
+          "name": "dictionaries are populated"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/slowniki/role-zalogi"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "nazwa": "Nazwa"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for rodzaje czynności",
+      "providerStates": [
+        {
+          "name": "dictionaries are populated"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/slowniki/rodzaje-czynnosci"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "nazwa": "Nazwa"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for statusy operacji",
+      "providerStates": [
+        {
+          "name": "dictionaries are populated"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/slowniki/statusy-operacji"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "nazwa": "Nazwa"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for statusy zleceń",
+      "providerStates": [
+        {
+          "name": "dictionaries are populated"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/slowniki/statusy-zlecen"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "id": 1,
+              "nazwa": "Nazwa"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for user by id",
+      "providerStates": [
+        {
+          "name": "user with id 1 exists"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/uzytkownicy/1"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "aktywny": true,
+            "email": "jan@example.com",
+            "id": 1,
+            "imie": "Jan",
+            "nazwisko": "Kowalski",
+            "rolaId": 1,
+            "rolaNazwa": "Administrator"
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.aktywny": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.imie": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.nazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.rolaId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.rolaNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to change flight order status",
+      "providerStates": [
+        {
+          "name": "flight order with id 1 exists in status Wprowadzone"
+        }
+      ],
+      "request": {
+        "body": {
+          "statusId": 2
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/zlecenia/1/status"
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "description": "a request to change operation status",
+      "providerStates": [
+        {
+          "name": "operation with id 1 exists in status Wprowadzone"
+        }
+      ],
+      "request": {
+        "body": {
+          "komentarz": "Potwierdzam do planowania",
+          "statusId": 3
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/operacje/1/status"
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "description": "a request to create a flight order",
+      "providerStates": [
+        {
+          "name": "prerequisites for creating a flight order exist"
+        }
+      ],
+      "request": {
+        "body": {
+          "czlonkowieZalogiIds": [
+            1,
+            2
+          ],
+          "helikopterId": 1,
+          "ladowiskoKoncoweId": 2,
+          "ladowiskoStartoweId": 1,
+          "operacjeIds": [
+            1
+          ],
+          "planowaneLadowanieDt": "2026-05-10T14:00:00",
+          "planowanyStartDt": "2026-05-10T08:00:00",
+          "szacowanaDlugoscTrasy": 100
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/zlecenia"
+      },
+      "response": {
+        "body": {
+          "data": 1,
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to change flight order status",
+      "providerStates": [
+        {
+          "name": "flight order with id 1 exists in status Wprowadzone"
+        }
+      ],
+      "request": {
+        "body": {
+          "statusId": 2
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/zlecenia/1/status"
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "description": "a request for flight order history",
+      "providerStates": [
+        {
+          "name": "flight order with id 1 has change history"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/zlecenia/1/historia"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "dataZmiany": "2026-03-30T14:00:00",
+              "id": 1,
+              "nowaWartosc": "Przekazane do akceptacji",
+              "pole": "Status",
+              "staraWartosc": "Wprowadzone",
+              "zmienionePrzezEmail": "admin@example.com"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].dataZmiany": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nowaWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].pole": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].staraWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].zmienionePrzezEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create a helicopter",
+      "providerStates": [
+        {
+          "name": "no helicopter with registration SP-NEW exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "dataWaznosciPrzegladu": "2027-06-15",
+          "maksLiczbaCzlonkowZalogi": 6,
+          "maksUdzwigKg": 1500,
+          "numerRejestracyjny": "SP-NEW",
+          "opis": "Nowy helikopter",
+          "status": "Aktywny",
+          "typ": "Airbus H135",
+          "zasiegKm": 650
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/helikoptery"
+      },
+      "response": {
+        "body": {
+          "data": 2,
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create a user",
+      "providerStates": [
+        {
+          "name": "no user with email anna@example.com exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "email": "anna@example.com",
+          "haslo": "Secure123!",
+          "imie": "Anna",
+          "nazwisko": "Nowak",
+          "rolaId": 2
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/uzytkownicy"
+      },
+      "response": {
+        "body": {
+          "data": 2,
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to create an operation",
+      "providerStates": [
+        {
+          "name": "user is authorized to create operations"
+        }
+      ],
+      "request": {
+        "body": {
+          "dodatkoweInfo": null,
+          "kmlNazwaPliku": null,
+          "kmlZawartosc": null,
+          "liczbaKmTrasy": 30,
+          "numerZleceniaProjektu": "ZP-NEW-001",
+          "opisSkrocony": "Nowa operacja testowa",
+          "osobyKontaktoweIds": [
+            1
+          ],
+          "proponowanaDataDo": "2026-05-03",
+          "proponowanaDataOd": "2026-05-01",
+          "punktyTrasy": [
+            {
+              "dlugosc": 17,
+              "kolejnosc": 1,
+              "szerokosc": 51.1
+            },
+            {
+              "dlugosc": 17.1,
+              "kolejnosc": 2,
+              "szerokosc": 51.2
+            }
+          ],
+          "rodzajeCzynnosciIds": [
+            1
+          ]
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/operacje"
+      },
+      "response": {
+        "body": {
+          "data": 1,
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to change operation status",
+      "providerStates": [
+        {
+          "name": "operation with id 1 exists in status Wprowadzone"
+        }
+      ],
+      "request": {
+        "body": {
+          "komentarz": "Potwierdzam do planowania",
+          "statusId": 3
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/operacje/1/status"
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "description": "a request for operation comments",
+      "providerStates": [
+        {
+          "name": "operation with id 1 has comments"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje/1/komentarze"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "autorEmail": "admin@example.com",
+              "createdAt": "2026-03-30T10:00:00",
+              "id": 1,
+              "tresc": "Komentarz testowy"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].autorEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].createdAt": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].tresc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request for operation history",
+      "providerStates": [
+        {
+          "name": "operation with id 1 has change history"
+        }
+      ],
+      "request": {
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token"
+        },
+        "method": "GET",
+        "path": "/api/operacje/1/historia"
+      },
+      "response": {
+        "body": {
+          "data": [
+            {
+              "dataZmiany": "2026-03-30T12:00:00",
+              "id": 1,
+              "nowaWartosc": "Potwierdzone do planowania",
+              "pole": "Status",
+              "staraWartosc": "Wprowadzone",
+              "zmienionePrzezEmail": "admin@example.com"
+            }
+          ],
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type",
+                  "min": 1
+                }
+              ]
+            },
+            "$.data[*].dataZmiany": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data[*].nowaWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].pole": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].staraWartosc": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data[*].zmienionePrzezEmail": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    },
+    {
+      "description": "a request to update user 1",
+      "providerStates": [
+        {
+          "name": "user with id 1 exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "aktywny": true,
+          "email": "jan@example.com",
+          "imie": "Jan",
+          "nazwisko": "Kowalski-Zmieniony",
+          "rolaId": 1
+        },
+        "headers": {
+          "Authorization": "Bearer valid-jwt-token",
+          "Content-Type": "application/json"
+        },
+        "method": "PUT",
+        "path": "/api/uzytkownicy/1"
+      },
+      "response": {
+        "status": 204
+      }
+    },
+    {
+      "description": "a token refresh request",
+      "providerStates": [
+        {
+          "name": "a valid refresh token exists"
+        }
+      ],
+      "request": {
+        "body": {
+          "refreshToken": "valid_refresh_token"
+        },
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "method": "POST",
+        "path": "/api/auth/refresh"
+      },
+      "response": {
+        "body": {
+          "data": {
+            "refreshToken": "new_refresh_token",
+            "token": "new_jwt_token",
+            "uzytkownik": {
+              "aktywny": true,
+              "email": "admin@example.com",
+              "id": 1,
+              "imie": "Jan",
+              "nazwisko": "Kowalski",
+              "rolaId": 1,
+              "rolaNazwa": "Administrator"
+            }
+          },
+          "errors": [],
+          "success": true
+        },
+        "headers": {
+          "Content-Type": "application/json; charset=utf-8"
+        },
+        "matchingRules": {
+          "body": {
+            "$": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.refreshToken": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.token": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.aktywny": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.email": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.id": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.uzytkownik.imie": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.nazwisko": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.data.uzytkownik.rolaId": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "integer"
+                }
+              ]
+            },
+            "$.data.uzytkownik.rolaNazwa": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            },
+            "$.success": {
+              "combine": "AND",
+              "matchers": [
+                {
+                  "match": "type"
+                }
+              ]
+            }
+          }
+        },
+        "status": 200
+      }
+    }
+  ],
+  "metadata": {
+    "pact-js": {
+      "version": "16.3.0"
+    },
+    "pactRust": {
+      "ffi": "0.5.3",
+      "models": "1.3.9"
+    },
+    "pactSpecification": {
+      "version": "3.0.0"
+    }
+  },
+  "provider": {
+    "name": "AeroApi"
+  }
+}
