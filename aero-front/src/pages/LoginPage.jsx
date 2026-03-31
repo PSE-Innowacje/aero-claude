@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Form, Input, Button, Card, Typography, message, Space } from 'antd';
 import { UserOutlined, LockOutlined, AppstoreOutlined } from '@ant-design/icons';
-import { login as apiLogin } from '../services/api';
+import { login as apiLogin, extractApiError } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
@@ -18,12 +18,11 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await apiLogin(email, haslo);
-      login(result.token, result.uzytkownik);
+      login(result.token, result.refreshToken, result.uzytkownik);
       message.success(`Witaj, ${result.uzytkownik.imie}!`);
       navigate(from, { replace: true });
     } catch (err) {
-      const msg = err?.response?.data?.errors?.[0] ?? 'Nieprawidłowy email lub hasło.';
-      message.error(msg);
+      message.error(extractApiError(err, 'Nieprawidłowy email lub hasło.'));
     } finally {
       setLoading(false);
     }
@@ -92,12 +91,6 @@ export default function LoginPage() {
             </Button>
           </Form>
         </Card>
-
-        <div style={{ textAlign: 'center', marginTop: 24 }}>
-          <Text type="secondary" style={{ fontSize: 12 }}>
-            API: <code style={{ color: '#7A7A95' }}>https://localhost:64464</code>
-          </Text>
-        </div>
       </div>
     </div>
   );

@@ -32,6 +32,9 @@ public class LotyDbContext(DbContextOptions<LotyDbContext> options) : DbContext(
     public DbSet<ZlecenieOperacja> ZlecenieOperacje => Set<ZlecenieOperacja>();
     public DbSet<ZlecenieHistoriaZmian> ZlecenieHistoriaZmian => Set<ZlecenieHistoriaZmian>();
 
+    // ── Bezpieczeństwo ───────────────────────────────────────
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
     protected override void OnModelCreating(ModelBuilder mb)
     {
         base.OnModelCreating(mb);
@@ -141,6 +144,7 @@ public class LotyDbContext(DbContextOptions<LotyDbContext> options) : DbContext(
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
             e.HasIndex(x => x.StatusId).HasDatabaseName("idx_operacje_status");
             e.HasIndex(x => x.PlanowanaDataOd).HasDatabaseName("idx_operacje_planowana_od");
+            e.HasIndex(x => x.Numer).IsUnique().HasDatabaseName("idx_operacje_numer_unique");
             e.HasOne(x => x.Status).WithMany(s => s.PlanowaneOperacje).HasForeignKey(x => x.StatusId);
             e.HasOne(x => x.Wprowadzajacy).WithMany(u => u.WprowadzoneOperacje).HasForeignKey(x => x.WprowadzajacyId);
         });
@@ -220,6 +224,7 @@ public class LotyDbContext(DbContextOptions<LotyDbContext> options) : DbContext(
             e.Property(x => x.UpdatedAt).HasColumnName("updated_at");
             e.HasIndex(x => x.StatusId).HasDatabaseName("idx_zlecenia_status");
             e.HasIndex(x => x.PilotId).HasDatabaseName("idx_zlecenia_pilot");
+            e.HasIndex(x => x.Numer).IsUnique().HasDatabaseName("idx_zlecenia_numer_unique");
             e.HasIndex(x => x.HelikopterId).HasDatabaseName("idx_zlecenia_helikopter");
             e.HasIndex(x => x.PlanowanyStartDt).HasDatabaseName("idx_zlecenia_start_dt");
             e.HasOne(x => x.Pilot).WithMany(c => c.ZleceniaJakoPilot).HasForeignKey(x => x.PilotId);
@@ -270,5 +275,20 @@ public class LotyDbContext(DbContextOptions<LotyDbContext> options) : DbContext(
         mb.Entity<SlownikRodzajowCzynnosci>(e => e.Property(x => x.Nazwa).HasColumnName("nazwa"));
         mb.Entity<SlownikStatusowOperacji>(e => e.Property(x => x.Nazwa).HasColumnName("nazwa"));
         mb.Entity<SlownikStatusowZlecen>(e => e.Property(x => x.Nazwa).HasColumnName("nazwa"));
+
+        // RefreshToken
+        mb.Entity<RefreshToken>(e =>
+        {
+            e.ToTable("refresh_tokens");
+            e.Property(x => x.Token).HasColumnName("token").HasMaxLength(256);
+            e.Property(x => x.UzytkownikId).HasColumnName("uzytkownik_id");
+            e.Property(x => x.UtworzonoUtc).HasColumnName("utworzono_utc");
+            e.Property(x => x.WygasaUtc).HasColumnName("wygasa_utc");
+            e.Property(x => x.OdwolanoUtc).HasColumnName("odwolano_utc");
+            e.Property(x => x.ZastapionePrzez).HasColumnName("zastapione_przez").HasMaxLength(256);
+            e.HasIndex(x => x.Token).IsUnique().HasDatabaseName("idx_refresh_token_unique");
+            e.HasIndex(x => x.UzytkownikId).HasDatabaseName("idx_refresh_token_user");
+            e.HasOne(x => x.Uzytkownik).WithMany().HasForeignKey(x => x.UzytkownikId).OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

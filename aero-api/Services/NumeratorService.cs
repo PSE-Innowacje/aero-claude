@@ -9,31 +9,57 @@ public interface INumeratorService
     Task<string> NastepnyNumerZleceniaAsync();
 }
 
+/// <summary>
+/// Generuje unikalne numery operacji i zleceń.
+/// Używa SemaphoreSlim do uniknięcia race condition (TOCTOU).
+/// Unique index na kolumnie Numer stanowi dodatkowe zabezpieczenie.
+/// </summary>
 public class NumeratorService(LotyDbContext db) : INumeratorService
 {
+    private static readonly SemaphoreSlim _lockOperacje = new(1, 1);
+    private static readonly SemaphoreSlim _lockZlecenia = new(1, 1);
+
     public async Task<string> NastepnyNumerOperacjiAsync()
     {
-        var rok = DateTime.UtcNow.Year;
-        var ostatni = await db.PlanowaneOperacje
-            .Where(o => o.Numer.StartsWith($"OP-{rok}-"))
-            .OrderByDescending(o => o.Numer)
-            .Select(o => o.Numer)
-            .FirstOrDefaultAsync();
+        await _lockOperacje.WaitAsync();
+        try
+        {
+            var rok = DateTime.UtcNow.Year;
+            var prefix = $"OP-{rok}-";
+            var ostatni = await db.PlanowaneOperacje
+                .Where(o => o.Numer.StartsWith(prefix))
+                .OrderByDescending(o => o.Numer)
+                .Select(o => o.Numer)
+                .FirstOrDefaultAsync();
 
-        var seq = ostatni is null ? 1 : int.Parse(ostatni.Split('-')[2]) + 1;
-        return $"OP-{rok}-{seq:D4}";
+            var seq = ostatni is null ? 1 : int.Parse(ostatni.Split('-')[2]) + 1;
+            return $"OP-{rok}-{seq:D4}";
+        }
+        finally
+        {
+            _lockOperacje.Release();
+        }
     }
 
     public async Task<string> NastepnyNumerZleceniaAsync()
     {
-        var rok = DateTime.UtcNow.Year;
-        var ostatni = await db.ZleceniaNaLot
-            .Where(z => z.Numer.StartsWith($"ZL-{rok}-"))
-            .OrderByDescending(z => z.Numer)
-            .Select(z => z.Numer)
-            .FirstOrDefaultAsync();
+        await _lockZlecenia.WaitAsync();
+        try
+        {
+            var rok = DateTime.UtcNow.Year;
+            var prefix = $"ZL-{rok}-";
+            var ostatni = await db.ZleceniaNaLot
+                .Where(z => z.Numer.StartsWith(prefix))
+                .OrderByDescending(z => z.Numer)
+                .Select(z => z.Numer)
+                .FirstOrDefaultAsync();
 
-        var seq = ostatni is null ? 1 : int.Parse(ostatni.Split('-')[2]) + 1;
-        return $"ZL-{rok}-{seq:D4}";
+            var seq = ostatni is null ? 1 : int.Parse(ostatni.Split('-')[2]) + 1;
+            return $"ZL-{rok}-{seq:D4}";
+        }
+        finally
+        {
+            _lockZlecenia.Release();
+        }
     }
 }

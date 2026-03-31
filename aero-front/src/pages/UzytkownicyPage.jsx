@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Tooltip, Tag, Card, Input, message } from 'antd';
 import { PlusOutlined, EditOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
-import { getUzytkownicy } from '../services/api';
+import { getUzytkownicy, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 const ROLA_COLORS = {
@@ -20,7 +20,7 @@ export default function UzytkownicyPage() {
 
   useEffect(() => {
     setLoading(true);
-    getUzytkownicy().then(setLista).catch(() => message.error('Błąd ładowania.')).finally(() => setLoading(false));
+    getUzytkownicy().then(setLista).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setLoading(false));
   }, []);
 
   const filtered = lista.filter(u =>

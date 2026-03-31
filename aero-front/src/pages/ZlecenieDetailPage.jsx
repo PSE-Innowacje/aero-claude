@@ -9,7 +9,7 @@ import {
   CheckOutlined, CloseOutlined, CheckCircleOutlined,
   MinusCircleOutlined,
 } from '@ant-design/icons';
-import { getZlecenieById, zmienStatusZlecenia, getHistoriaZlecenia } from '../services/api';
+import { getZlecenieById, zmienStatusZlecenia, getHistoriaZlecenia, extractApiError } from '../services/api';
 import { StatusZleceniaTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -25,8 +25,16 @@ const STATUS_ACTIONS = {
     { fromStatus: 4, toStatus: 7, label: 'Nie zrealizowane',        danger: true,    icon: <MinusCircleOutlined /> },
   ],
   'Osoba nadzorująca': [
-    { fromStatus: 2, toStatus: 3, label: 'Odrzuć',      danger: true,  icon: <CloseOutlined /> },
+    { fromStatus: 2, toStatus: 3, label: 'Odrzuć',      danger: true,    icon: <CloseOutlined /> },
     { fromStatus: 2, toStatus: 4, label: 'Zaakceptuj',  type: 'primary', icon: <CheckOutlined /> },
+  ],
+  'Administrator': [
+    { fromStatus: 1, toStatus: 2, label: 'Przekaż do akceptacji', type: 'primary', icon: <RocketOutlined /> },
+    { fromStatus: 2, toStatus: 3, label: 'Odrzuć',                danger: true,    icon: <CloseOutlined /> },
+    { fromStatus: 2, toStatus: 4, label: 'Zaakceptuj',            type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: 4, toStatus: 5, label: 'Zrealizowane w części',  type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: 4, toStatus: 6, label: 'Zrealizowane w całości', type: 'primary', icon: <CheckCircleOutlined /> },
+    { fromStatus: 4, toStatus: 7, label: 'Nie zrealizowane',       danger: true,    icon: <MinusCircleOutlined /> },
   ],
 };
 
@@ -52,8 +60,8 @@ export default function ZlecenieDetailPage() {
       ]);
       setZlecenie(zl);
       setHistoria(hist ?? []);
-    } catch {
-      message.error('Nie udało się załadować zlecenia.');
+    } catch (err) {
+      message.error(extractApiError(err, 'Nie udało się załadować zlecenia.'));
     } finally {
       setLoading(false);
     }
@@ -69,8 +77,7 @@ export default function ZlecenieDetailPage() {
       setModal({ open: false, action: null });
       load();
     } catch (err) {
-      const errors = err?.response?.data?.errors;
-      message.error(errors?.join(', ') ?? 'Błąd zmiany statusu.');
+      message.error(extractApiError(err, 'Błąd zmiany statusu.'));
     } finally {
       setSaving(false);
     }
@@ -142,12 +149,14 @@ export default function ZlecenieDetailPage() {
 
           {/* Operacje */}
           <Card title="Powiązane operacje lotnicze" style={{ borderRadius: 16 }}>
-            {zlecenie.operacjeIds?.length > 0 ? (
-              <Space wrap>
-                {zlecenie.operacjeIds.map(oid => (
-                  <Button key={oid} type="link" style={{ padding: 0 }}
-                    onClick={() => navigate(`/operacje/${oid}`)}>
-                    Operacja #{oid}
+            {zlecenie.operacje?.length > 0 ? (
+              <Space direction="vertical" style={{ width: '100%' }}>
+                {zlecenie.operacje.map(op => (
+                  <Button key={op.id} type="link" style={{ padding: 0, textAlign: 'left', height: 'auto' }}
+                    onClick={() => navigate(`/operacje/${op.id}`)}>
+                    <span style={{ fontWeight: 600 }}>{op.numer}</span>
+                    <span style={{ color: '#7A7A95', marginLeft: 8 }}>{op.opisSkrocony}</span>
+                    <span style={{ color: '#555', marginLeft: 8, fontSize: 11 }}>[{op.statusNazwa}]</span>
                   </Button>
                 ))}
               </Space>

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Form, Input, InputNumber, Button, Card, message, Skeleton } from 'antd';
 import { SaveOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { getLadowiskoById, createLadowisko, updateLadowisko } from '../services/api';
+import { getLadowiskoById, createLadowisko, updateLadowisko, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 export default function LadowiskoFormPage() {
@@ -17,7 +17,7 @@ export default function LadowiskoFormPage() {
     if (!isEdit) return;
     setInitLoad(true);
     getLadowiskoById(id).then(data => form.setFieldsValue(data))
-      .catch(() => message.error('Błąd ładowania.')).finally(() => setInitLoad(false));
+      .catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
   }, [id, form, isEdit]);
 
   const onFinish = async (values) => {
@@ -27,7 +27,7 @@ export default function LadowiskoFormPage() {
       message.success(isEdit ? 'Zaktualizowano!' : 'Dodano!');
       navigate('/ladowiska');
     } catch (err) {
-      message.error(err?.response?.data?.errors?.join(', ') ?? 'Błąd.');
+      message.error(extractApiError(err));
     } finally {
       setLoading(false);
     }

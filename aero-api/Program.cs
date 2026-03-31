@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using FluentValidation;
 using FluentValidation.AspNetCore;
 using LotyApi.Data;
@@ -6,6 +7,7 @@ using LotyApi.Middleware;
 using LotyApi.Services;
 using LotyApi.Validators;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -46,7 +48,13 @@ try
 
     // ── JWT ───────────────────────────────────────────────────
     var jwtKey = builder.Configuration["Jwt:SecretKey"]
-        ?? throw new InvalidOperationException("Brak konfiguracji Jwt:SecretKey.");
+        ?? Environment.GetEnvironmentVariable("JWT_SECRET_KEY")
+        ?? throw new InvalidOperationException(
+            "Brak konfiguracji Jwt:SecretKey w appsettings ani zmiennej środowiskowej JWT_SECRET_KEY. " +
+            "Ustaw zmienną: export JWT_SECRET_KEY=\"<min-32-znaki-losowego-klucza>\"");
+
+    if (jwtKey.Length < 32)
+        throw new InvalidOperationException("JWT SecretKey musi mieć co najmniej 32 znaki.");
 
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         .AddJwtBearer(opt =>
@@ -61,11 +69,27 @@ try
                 ValidAudience            = builder.Configuration["Jwt:Audience"],
                 IssuerSigningKey         = new SymmetricSecurityKey(
                     Encoding.UTF8.GetBytes(jwtKey)),
-                ClockSkew                = TimeSpan.Zero   // brak tolerancji wygaśnięcia
+                ClockSkew                = TimeSpan.FromSeconds(30)
             };
         });
 
     builder.Services.AddAuthorization();
+
+    // ── Rate Limiting ─────────────────────────────────────────
+    var loginLimit = builder.Configuration.GetValue("RateLimiting:LoginPermitLimit", 5);
+    var loginWindow = builder.Configuration.GetValue("RateLimiting:LoginWindowMinutes", 1);
+
+    builder.Services.AddRateLimiter(opt =>
+    {
+        opt.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+        opt.AddFixedWindowLimiter("login", o =>
+        {
+            o.PermitLimit = loginLimit;
+            o.Window = TimeSpan.FromMinutes(loginWindow);
+            o.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            o.QueueLimit = 0;
+        });
+    });
 
     // ── Kontrolery z konfiguracją JSON ────────────────────────
     builder.Services.AddControllers()
@@ -111,7 +135,6 @@ try
             }
         });
 
-        // Dołącz komentarze XML jeśli wygenerowane
         var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
         if (File.Exists(xmlPath)) c.IncludeXmlComments(xmlPath);
@@ -120,8 +143,12 @@ try
     // ── CORS ──────────────────────────────────────────────────
     builder.Services.AddCors(opt =>
     {
-        opt.AddPolicy("Dev",    p => p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
-        opt.AddPolicy("Prod",   p => p
+        opt.AddPolicy("Dev", p => p
+            .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>()
+                         ?? ["http://localhost:5173"])
+            .AllowAnyHeader()
+            .AllowAnyMethod());
+        opt.AddPolicy("Prod", p => p
             .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
             .AllowAnyHeader()
             .AllowAnyMethod());
@@ -132,6 +159,17 @@ try
         .AddDbContextCheck<LotyDbContext>("sqlite");
 
     var app = builder.Build();
+
+    // ── Security headers ─────────────────────────────────────
+    app.Use(async (context, next) =>
+    {
+        context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+        context.Response.Headers["X-Frame-Options"] = "DENY";
+        context.Response.Headers["X-XSS-Protection"] = "0";
+        context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+        context.Response.Headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()";
+        await next();
+    });
 
     // ── Middleware pipeline ───────────────────────────────────
     app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -155,18 +193,57 @@ try
     else
     {
         app.UseCors("Prod");
+        app.UseHsts();
     }
 
+    app.UseRateLimiter();
     app.UseAuthentication();
     app.UseAuthorization();
     app.MapControllers();
-    app.MapHealthChecks("/health");
+
+    // Health check — publiczny endpoint bez szczegółów, szczegółowy z autoryzacją
+    app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+    {
+        ResponseWriter = async (context, report) =>
+        {
+            context.Response.ContentType = "application/json";
+            var result = new { status = report.Status.ToString() };
+            await context.Response.WriteAsJsonAsync(result);
+        }
+    });
 
     // ── DB Init ───────────────────────────────────────────────
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<LotyDbContext>();
         db.Database.EnsureCreated();
+
+        // Dodaj tabelę refresh_tokens jeśli nie istnieje (istniejąca baza)
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS refresh_tokens (
+                Id INTEGER PRIMARY KEY AUTOINCREMENT,
+                token TEXT NOT NULL,
+                uzytkownik_id INTEGER NOT NULL,
+                utworzono_utc TEXT NOT NULL,
+                wygasa_utc TEXT NOT NULL,
+                odwolano_utc TEXT NULL,
+                zastapione_przez TEXT NULL,
+                FOREIGN KEY (uzytkownik_id) REFERENCES uzytkownicy(Id) ON DELETE CASCADE
+            )
+            """);
+        db.Database.ExecuteSqlRaw("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_refresh_token_unique ON refresh_tokens(token)
+            """);
+        db.Database.ExecuteSqlRaw("""
+            CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON refresh_tokens(uzytkownik_id)
+            """);
+        db.Database.ExecuteSqlRaw("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_operacje_numer_unique ON planowane_operacje(numer)
+            """);
+        db.Database.ExecuteSqlRaw("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_zlecenia_numer_unique ON zlecenia_na_lot(numer)
+            """);
+
         Log.Information("Baza danych: {Source}",
             db.Database.GetConnectionString());
     }

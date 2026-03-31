@@ -11,6 +11,7 @@ import {
 import {
   getOperacjaById, zmienStatusOperacji,
   getKomentarzeOperacji, dodajKomentarzOperacji, getHistoriaOperacji,
+  extractApiError,
 } from '../services/api';
 import { StatusOperacjiTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
@@ -60,8 +61,8 @@ export default function OperacjaDetailPage() {
       setOperacja(op);
       setKomentarze(km ?? []);
       setHistoria(hist ?? []);
-    } catch {
-      message.error('Nie udało się załadować operacji.');
+    } catch (err) {
+      message.error(extractApiError(err, 'Nie udało się załadować operacji.'));
     } finally {
       setLoading(false);
     }
@@ -78,8 +79,7 @@ export default function OperacjaDetailPage() {
       setKomentarzDoStatusu('');
       load();
     } catch (err) {
-      const errors = err?.response?.data?.errors;
-      message.error(errors?.join(', ') ?? 'Błąd zmiany statusu.');
+      message.error(extractApiError(err, 'Błąd zmiany statusu.'));
     }
   };
 
@@ -92,8 +92,8 @@ export default function OperacjaDetailPage() {
       const km = await getKomentarzeOperacji(id);
       setKomentarze(km ?? []);
       message.success('Komentarz dodany.');
-    } catch {
-      message.error('Nie udało się dodać komentarza.');
+    } catch (err) {
+      message.error(extractApiError(err, 'Nie udało się dodać komentarza.'));
     } finally {
       setSendingComment(false);
     }

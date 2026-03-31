@@ -6,7 +6,7 @@ import {
 } from 'antd';
 import { SaveOutlined, TeamOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getCzlonekById, createCzlonek, updateCzlonek, getRoleZalogi } from '../services/api';
+import { getCzlonekById, createCzlonek, updateCzlonek, getRoleZalogi, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 const { Option } = Select;
@@ -35,7 +35,7 @@ export default function CzlonekZalogiFormPage() {
         dataWaznosciSzkolenia: data.dataWaznosciSzkolenia ? dayjs(data.dataWaznosciSzkolenia) : null,
       });
       setRolaNazwa(data.rolaNazwa);
-    }).catch(() => message.error('Błąd ładowania.')).finally(() => setInitLoad(false));
+    }).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
   }, [id, form, isEdit]);
 
   const onFinish = async (values) => {
@@ -50,7 +50,7 @@ export default function CzlonekZalogiFormPage() {
       message.success(isEdit ? 'Zaktualizowano!' : 'Dodano!');
       navigate('/czlonkowie-zalogi');
     } catch (err) {
-      message.error(err?.response?.data?.errors?.join(', ') ?? 'Błąd.');
+      message.error(extractApiError(err));
     } finally {
       setLoading(false);
     }

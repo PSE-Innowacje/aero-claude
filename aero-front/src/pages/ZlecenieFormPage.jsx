@@ -9,7 +9,7 @@ import dayjs from 'dayjs';
 import {
   getZlecenieById, createZlecenie, updateZlecenie,
   getHelikoptery, getCzlonkowie, getLadowiska,
-  getOperacje,
+  getOperacje, extractApiError,
 } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
@@ -31,32 +31,36 @@ export default function ZlecenieFormPage() {
   const [apiErrors,   setApiErrors]   = useState([]);
 
   useEffect(() => {
-    Promise.all([
+    // Wszystkie dane (słowniki + szczegóły zlecenia przy edycji) ładowane jednocześnie,
+    // żeby form.setFieldsValue zawsze wykonał się po załadowaniu listy operacji.
+    const promises = [
       getHelikoptery(),
       getCzlonkowie(),
       getLadowiska(),
-      getOperacje({ statusId: 3, rozmiarStrony: 100 }),
-    ]).then(([h, c, l, op]) => {
-      setHelikoptery((h ?? []).filter(x => x.status === 'aktywny'));
-      setCzlonkowie(c ?? []);
-      setLadowiska(l ?? []);
-      setOperacje(op?.items ?? []);
-    }).catch(() => message.error('Błąd ładowania danych.'));
-  }, []);
-
-  useEffect(() => {
-    if (!isEdit) return;
-    setInitLoad(true);
-    getZlecenieById(id).then(data => {
-      form.setFieldsValue({
-        ...data,
-        planowanyStartDt:     dayjs(data.planowanyStartDt),
-        planowaneLadowanieDt: dayjs(data.planowaneLadowanieDt),
-        rzeczywistyStartDt:   data.rzeczywistyStartDt ? dayjs(data.rzeczywistyStartDt) : null,
-        rzeczywisteLadowanieDt: data.rzeczywisteLadowanieDt ? dayjs(data.rzeczywisteLadowanieDt) : null,
-      });
-    }).catch(() => message.error('Nie udało się załadować zlecenia.')).finally(() => setInitLoad(false));
-  }, [id, form, isEdit]);
+      getOperacje({ rozmiarStrony: 500 }),
+      isEdit ? getZlecenieById(id) : Promise.resolve(null),
+    ];
+    Promise.all(promises)
+      .then(([h, c, l, op, zlecenie]) => {
+        setHelikoptery((h ?? []).filter(x => x.status === 'aktywny'));
+        setCzlonkowie(c ?? []);
+        setLadowiska(l ?? []);
+        setOperacje(op?.items ?? []);
+        if (zlecenie) {
+          form.setFieldsValue({
+            ...zlecenie,
+            planowanyStartDt:       dayjs(zlecenie.planowanyStartDt),
+            planowaneLadowanieDt:   dayjs(zlecenie.planowaneLadowanieDt),
+            rzeczywistyStartDt:     zlecenie.rzeczywistyStartDt ? dayjs(zlecenie.rzeczywistyStartDt) : null,
+            rzeczywisteLadowanieDt: zlecenie.rzeczywisteLadowanieDt ? dayjs(zlecenie.rzeczywisteLadowanieDt) : null,
+            // operacje zwracane jako lista obiektów – Select potrzebuje tablicy ID
+            operacjeIds: (zlecenie.operacje ?? []).map(o => o.id),
+          });
+        }
+      })
+      .catch(err => message.error(extractApiError(err, 'Błąd ładowania danych.')))
+      .finally(() => setInitLoad(false));
+  }, [id, isEdit]);
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -80,11 +84,13 @@ export default function ZlecenieFormPage() {
       }
       navigate('/zlecenia');
     } catch (err) {
-      const errors = err?.response?.data?.errors ?? err?.response?.data?.bledy;
-      if (errors?.length) {
-        setApiErrors(Array.isArray(errors) ? errors : [errors]);
+      const msg = extractApiError(err);
+      // Błędy walidacji biznesowej (lista) wyświetl w Alert, resztę jako toast
+      const errors = err?.response?.data?.errors;
+      if (Array.isArray(errors) && errors.length) {
+        setApiErrors(errors);
       } else {
-        message.error('Błąd podczas zapisywania.');
+        message.error(msg);
       }
     } finally {
       setLoading(false);
@@ -198,7 +204,7 @@ export default function ZlecenieFormPage() {
               <Select mode="multiple" placeholder="Wybierz operacje (status: Potwierdzone do planu)…" size="large">
                 {operacje.map(o => (
                   <Option key={o.id} value={o.id}>
-                    {o.numer} — {o.opisSkrocony} ({o.liczbaKmTrasy ?? o.liczbaKmTrasy} km)
+                    {o.numer} — {o.opisSkrocony} ({o.liczbaKmTrasy} km) [{o.statusNazwa}]
                   </Option>
                 ))}
               </Select>

@@ -8,7 +8,8 @@ import {
   PlusOutlined, EditOutlined, EyeOutlined,
   SearchOutlined, FileTextOutlined,
 } from '@ant-design/icons';
-import { getOperacje, getStatusyOperacji, zmienStatusOperacji } from '../services/api';
+import { getOperacje, getOperacjaById, getStatusyOperacji, extractApiError } from '../services/api';
+import TrasaMapWidget from '../components/TrasaMapWidget';
 import { StatusOperacjiTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -26,7 +27,10 @@ export default function OperacjePage() {
   const [statusy,  setStatusy]  = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [filters,  setFilters]  = useState({ statusId: 3, strona: 1, rozmiarStrony: 20 });
-  const [search,   setSearch]   = useState('');
+  const [search,        setSearch]        = useState('');
+  const [selectedId,    setSelectedId]    = useState(null);
+  const [selectedKml,   setSelectedKml]   = useState(null);
+  const [kmlLoading,    setKmlLoading]    = useState(false);
 
   const fetch = useCallback(async (f) => {
     setLoading(true);
@@ -35,8 +39,8 @@ export default function OperacjePage() {
       if (search) params.numerZlecenia = search;
       const result = await getOperacje(params);
       setData(result ?? { items: [], lacznaLiczba: 0 });
-    } catch {
-      message.error('Nie udało się pobrać operacji.');
+    } catch (err) {
+      message.error(extractApiError(err, 'Nie udało się pobrać operacji.'));
     } finally {
       setLoading(false);
     }
@@ -47,6 +51,29 @@ export default function OperacjePage() {
 
   const handleSearch = () => fetch({ ...filters, strona: 1 });
 
+  const handleRowSelect = async (record) => {
+    if (selectedId === record.id) {
+      setSelectedId(null);
+      setSelectedKml(null);
+      return;
+    }
+    setSelectedId(record.id);
+    setSelectedKml(null);
+    if (!record.kmlZawartosc) {
+      setKmlLoading(true);
+      try {
+        const detail = await getOperacjaById(record.id);
+        setSelectedKml(detail?.kmlZawartosc ?? null);
+      } catch {
+        setSelectedKml(null);
+      } finally {
+        setKmlLoading(false);
+      }
+    } else {
+      setSelectedKml(record.kmlZawartosc);
+    }
+  };
+
   const columns = [
     {
       title: 'Numer',
@@ -55,6 +82,23 @@ export default function OperacjePage() {
         <Button type="link" style={{ padding: 0, fontWeight: 700 }} onClick={() => navigate(`/operacje/${r.id}`)}>
           {v}
         </Button>
+      ),
+    },
+    {
+      title: 'Trasa',
+      key: 'trasa',
+      width: 80,
+      render: (_, record) => (
+        record.kmlZawartosc || selectedId === record.id ? (
+          <Button
+            size="small"
+            type={selectedId === record.id ? 'primary' : 'default'}
+            onClick={() => handleRowSelect(record)}
+            style={{ fontSize: 11 }}
+          >
+            {selectedId === record.id ? 'Ukryj' : 'Mapa'}
+          </Button>
+        ) : null
       ),
     },
     { title: 'Nr zlecenia', dataIndex: 'numerZleceniaProjektu', ellipsis: true },
@@ -161,8 +205,50 @@ export default function OperacjePage() {
             onChange: (page, size) => setFilters(f => ({ ...f, strona: page, rozmiarStrony: size })),
           }}
           scroll={{ x: 900 }}
+          onRow={(record) => ({
+            onClick: (e) => {
+              // kliknięcie w wiersz (poza przyciskami) też otwiera mapę
+              if (e.target.tagName !== 'BUTTON' && e.target.tagName !== 'A') {
+                handleRowSelect(record);
+              }
+            },
+            style: {
+              cursor: 'pointer',
+              background: selectedId === record.id ? 'rgba(102,126,234,0.12)' : undefined,
+            },
+          })}
         />
       </Card>
+
+      {/* Mapa trasy wybranej operacji */}
+      {selectedId && (
+        <Card
+          style={{ borderRadius: 16, marginTop: 16 }}
+          styles={{ body: { padding: '16px 20px' } }}
+          title={
+            <span style={{ fontWeight: 600 }}>
+              Trasa lotu – operacja #{selectedId}
+            </span>
+          }
+          extra={
+            <Button size="small" onClick={() => { setSelectedId(null); setSelectedKml(null); }}>
+              Zamknij
+            </Button>
+          }
+        >
+          {kmlLoading ? (
+            <div style={{ textAlign: 'center', padding: 32 }}>
+              <span>Wczytywanie trasy…</span>
+            </div>
+          ) : selectedKml ? (
+            <TrasaMapWidget kmlZawartosc={selectedKml} height={420} />
+          ) : (
+            <div style={{ color: '#888', padding: 16 }}>
+              Brak danych trasy dla tej operacji.
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   );
 }

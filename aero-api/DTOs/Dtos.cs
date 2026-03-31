@@ -46,7 +46,9 @@ public record AktualizujUzytkownikaDto(
 // ── Logowanie ─────────────────────────────────────────────────
 
 public record LoginDto([Required][EmailAddress] string Email, [Required] string Haslo);
-public record LoginResponseDto(string Token, UzytkownikDto Uzytkownik);
+public record LoginResponseDto(string Token, string RefreshToken, UzytkownikDto Uzytkownik);
+public record RefreshTokenDto([Required] string RefreshToken);
+public record LogoutDto([Required] string RefreshToken);
 
 // ── Helikoptery ───────────────────────────────────────────────
 
@@ -119,6 +121,7 @@ public record PunktTrasyDto(int Kolejnosc, double Szerokosc, double Dlugosc);
 
 public record OperacjaListDto(
     int Id, string Numer, string NumerZleceniaProjektu, string OpisSkrocony,
+    int LiczbaKmTrasy,
     List<string> RodzajeCzynnosci,
     DateOnly? ProponowanaDataOd, DateOnly? ProponowanaDataDo,
     DateOnly? PlanowanaDataOd, DateOnly? PlanowanaDataDo,
@@ -126,7 +129,7 @@ public record OperacjaListDto(
 
 public record OperacjaDto(
     int Id, string Numer, string NumerZleceniaProjektu, string OpisSkrocony,
-    string? KmlNazwaPliku, int LiczbaKmTrasy,
+    string? KmlNazwaPliku, string? KmlZawartosc, int LiczbaKmTrasy,
     DateOnly? ProponowanaDataOd, DateOnly? ProponowanaDataDo,
     DateOnly? PlanowanaDataOd, DateOnly? PlanowanaDataDo,
     string? DodatkoweInfo, string? Komentarz, string? UwagiPoRealizacji,
@@ -179,6 +182,8 @@ public record ZlecenieListDto(
     string HelikopterNr, string PilotImieNazwisko,
     int StatusId, string StatusNazwa);
 
+public record OperacjaSkrotDto(int Id, string Numer, string OpisSkrocony, int StatusId, string StatusNazwa);
+
 public record ZlecenieDto(
     int Id, string Numer,
     DateTime PlanowanyStartDt, DateTime PlanowaneLadowanieDt,
@@ -191,7 +196,7 @@ public record ZlecenieDto(
     int StatusId, string StatusNazwa,
     List<int> CzlonkowieZalogiIds,
     List<string> CzlonkowieZalogiImiona,
-    List<int> OperacjeIds,
+    List<OperacjaSkrotDto> Operacje,
     DateTime CreatedAt, DateTime UpdatedAt);
 
 public record UtworzZlecenieDto(

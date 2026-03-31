@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Form, Input, Select, Button, Card, message, Skeleton, Switch } from 'antd';
 import { SaveOutlined, UserOutlined } from '@ant-design/icons';
-import { getUzytkownikById, createUzytkownik, updateUzytkownik, getRoleUzytkownikow } from '../services/api';
+import { getUzytkownikById, createUzytkownik, updateUzytkownik, getRoleUzytkownikow, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 const { Option } = Select;
@@ -22,7 +22,7 @@ export default function UzytkownikFormPage() {
     if (!isEdit) return;
     setInitLoad(true);
     getUzytkownikById(id).then(data => form.setFieldsValue(data))
-      .catch(() => message.error('Błąd ładowania.')).finally(() => setInitLoad(false));
+      .catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
   }, [id, form, isEdit]);
 
   const onFinish = async (values) => {
@@ -32,8 +32,7 @@ export default function UzytkownikFormPage() {
       message.success(isEdit ? 'Zaktualizowano!' : 'Użytkownik dodany!');
       navigate('/uzytkownicy');
     } catch (err) {
-      const msg = err?.response?.data?.errors?.join(', ') ?? err?.response?.data?.message ?? 'Błąd.';
-      message.error(msg);
+      message.error(extractApiError(err));
     } finally {
       setLoading(false);
     }

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Tooltip, Tag, Card, Input, message, Space } from 'antd';
 import { PlusOutlined, EditOutlined, SearchOutlined, TeamOutlined } from '@ant-design/icons';
-import { getCzlonkowie } from '../services/api';
+import { getCzlonkowie, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 export default function CzlonkowieZalogiPage() {
@@ -13,7 +13,7 @@ export default function CzlonkowieZalogiPage() {
 
   useEffect(() => {
     setLoading(true);
-    getCzlonkowie().then(setLista).catch(() => message.error('Błąd ładowania.')).finally(() => setLoading(false));
+    getCzlonkowie().then(setLista).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setLoading(false));
   }, []);
 
   const filtered = lista.filter(c =>

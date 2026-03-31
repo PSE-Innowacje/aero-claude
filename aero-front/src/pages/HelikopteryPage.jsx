@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Tooltip, Tag, Card, Input, message } from 'antd';
-import { PlusOutlined, EditOutlined, SearchOutlined, CarOutlined } from '@ant-design/icons';
-import { getHelikoptery } from '../services/api';
+import { PlusOutlined, EditOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
+import { getHelikoptery, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 export default function HelikopteryPage() {
@@ -13,7 +13,7 @@ export default function HelikopteryPage() {
 
   useEffect(() => {
     setLoading(true);
-    getHelikoptery().then(setHelikoptery).catch(() => message.error('Błąd ładowania.')).finally(() => setLoading(false));
+    getHelikoptery().then(setHelikoptery).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setLoading(false));
   }, []);
 
   const filtered = helikoptery.filter(h =>
@@ -47,7 +47,7 @@ export default function HelikopteryPage() {
   return (
     <div>
       <PageHeader
-        icon={<CarOutlined style={{ color: '#fff', fontSize: 22 }} />}
+        icon={<SendOutlined style={{ color: '#fff', fontSize: 22 }} />}
         gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
         title="Helikoptery"
         subtitle={`${helikoptery.length} rekordów`}

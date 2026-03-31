@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Tooltip, Card, Input, message } from 'antd';
 import { PlusOutlined, EditOutlined, SearchOutlined, EnvironmentOutlined } from '@ant-design/icons';
-import { getLadowiska } from '../services/api';
+import { getLadowiska, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 export default function LadowiskaPage() {
@@ -13,7 +13,7 @@ export default function LadowiskaPage() {
 
   useEffect(() => {
     setLoading(true);
-    getLadowiska().then(setLista).catch(() => message.error('Błąd ładowania.')).finally(() => setLoading(false));
+    getLadowiska().then(setLista).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setLoading(false));
   }, []);
 
   const filtered = lista.filter(l => l.nazwa?.toLowerCase().includes(search.toLowerCase()));

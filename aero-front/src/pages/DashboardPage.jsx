@@ -4,7 +4,7 @@ import { Row, Col, Card, Statistic, Button, List, Space, Spin, Typography, Tag }
 import {
   FileTextOutlined, RocketOutlined, CheckCircleOutlined,
   ClockCircleOutlined, PlusOutlined, ArrowRightOutlined,
-  CarOutlined, TeamOutlined,
+  SendOutlined, TeamOutlined
 } from '@ant-design/icons';
 import { getOperacje, getZlecenia, getHelikoptery, getCzlonkowie } from '../services/api';
 import { StatusOperacjiTag, StatusZleceniaTag } from '../components/StatusTag';
@@ -12,33 +12,58 @@ import { useAuth } from '../context/AuthContext';
 
 const { Title, Text } = Typography;
 
+// ── Interpolacja kolorów PSE (granat → czerwony) ─────────────
+const PSE_BLUE = [26,  95, 168];  // #1a5fa8
+const PSE_RED  = [167, 30,  45];  // #a71e2d
+
+function lerpColor(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+function toHex([r, g, b]) {
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+
+/**
+ * Traktuje wszystkie karty jako jeden ciągły gradient #1a5fa8 → #a71e2d.
+ * Karta idx zajmuje wycinek [idx/total, (idx+1)/total] tego pasma,
+ * więc kolor końca karty N = kolor początku karty N+1 — przejście jest ciągłe.
+ */
+function cardGradient(idx, total) {
+  const tStart = idx / total;
+  const tEnd   = (idx + 1) / total;
+  const cStart = lerpColor(PSE_BLUE, PSE_RED, tStart);
+  const cEnd   = lerpColor(PSE_BLUE, PSE_RED, tEnd);
+  return `linear-gradient(90deg, ${toHex(cStart)} 0%, ${toHex(cEnd)} 100%)`;
+}
+
 const STAT_CARDS = [
   {
     key: 'operacje',
     label: 'Operacje (potwierdzone)',
     icon: <FileTextOutlined style={{ fontSize: 28, color: '#fff' }} />,
-    gradient: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     path: '/operacje',
   },
   {
     key: 'zlecenia',
     label: 'Zlecenia (do akceptacji)',
     icon: <RocketOutlined style={{ fontSize: 28, color: '#fff' }} />,
-    gradient: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
     path: '/zlecenia',
   },
   {
     key: 'helikoptery',
     label: 'Aktywne helikoptery',
-    icon: <CarOutlined style={{ fontSize: 28, color: '#fff' }} />,
-    gradient: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+    icon: <SendOutlined style={{ fontSize: 28, color: '#fff' }} />,
     path: '/helikoptery',
   },
   {
     key: 'zaloga',
     label: 'Aktywna załoga',
     icon: <TeamOutlined style={{ fontSize: 28, color: '#fff' }} />,
-    gradient: 'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
     path: '/czlonkowie-zalogi',
   },
 ];
@@ -94,14 +119,14 @@ export default function DashboardPage() {
       </div>
 
       <Row gutter={[20, 20]} style={{ marginBottom: 28 }}>
-        {visibleCards.map(card => (
+        {visibleCards.map((card, idx) => (
           <Col xs={24} sm={12} lg={isAdmin ? 6 : 12} key={card.key}>
             <Card
               style={{ borderRadius: 18, border: 'none', overflow: 'hidden', cursor: 'pointer' }}
               styles={{ body: { padding: 0 } }}
               onClick={() => navigate(card.path)}
             >
-              <div style={{ background: card.gradient, padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ background: cardGradient(idx, visibleCards.length), padding: '24px 28px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   <div style={{ fontSize: 42, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{counts[card.key]}</div>
                   <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 4 }}>{card.label}</div>

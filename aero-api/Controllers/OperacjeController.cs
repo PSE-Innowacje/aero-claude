@@ -34,8 +34,8 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
             .AsNoTracking()
             .AsQueryable();
 
-        var filtrStatus = q.StatusId ?? StatusOperacji.PotwierdzoneDoPlan;
-        query = query.Where(o => o.StatusId == filtrStatus);
+        if (q.StatusId.HasValue)
+            query = query.Where(o => o.StatusId == q.StatusId.Value);
 
         if (!string.IsNullOrWhiteSpace(q.NumerZlecenia))
             query = query.Where(o => o.NumerZleceniaProjektu.Contains(q.NumerZlecenia));
@@ -54,6 +54,7 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
             .Skip(req.Pominij).Take(req.RozmiarStrony)
             .Select(o => new OperacjaListDto(
                 o.Id, o.Numer, o.NumerZleceniaProjektu, o.OpisSkrocony,
+                o.LiczbaKmTrasy,
                 o.RodzajeCzynnosci.Select(r => r.RodzajCzynnosci.Nazwa).ToList(),
                 o.ProponowanaDataOd, o.ProponowanaDataDo,
                 o.PlanowanaDataOd, o.PlanowanaDataDo,
@@ -94,44 +95,55 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
     [ProducesResponseType(400)]
     public async Task<IActionResult> Utworz([FromBody] UtworzOperacjeDto dto, CancellationToken ct)
     {
-        var numer = await numerator.NastepnyNumerOperacjiAsync();
-
-        var operacja = new PlanowanaOperacja
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Numer = numer,
-            NumerZleceniaProjektu = dto.NumerZleceniaProjektu,
-            OpisSkrocony = dto.OpisSkrocony,
-            KmlNazwaPliku = dto.KmlNazwaPliku,
-            KmlZawartosc = dto.KmlZawartosc,
-            LiczbaKmTrasy = dto.LiczbaKmTrasy,
-            ProponowanaDataOd = dto.ProponowanaDataOd,
-            ProponowanaDataDo = dto.ProponowanaDataDo,
-            DodatkoweInfo = dto.DodatkoweInfo,
-            StatusId = StatusOperacji.Wprowadzone,
-            WprowadzajacyId = BiezacyUzytkownikId
-        };
+            var numer = await numerator.NastepnyNumerOperacjiAsync();
 
-        foreach (var rcId in dto.RodzajeCzynnosciIds)
-            operacja.RodzajeCzynnosci.Add(new OperacjaRodzajCzynnosci { RodzajCzynnosciId = rcId });
-        foreach (var p in dto.PunktyTrasy)
-            operacja.PunktyTrasy.Add(new OperacjaPunktTrasy
-                { Kolejnosc = p.Kolejnosc, Szerokosc = p.Szerokosc, Dlugosc = p.Dlugosc });
-        foreach (var uid in dto.OsobyKontaktoweIds)
-            operacja.OsobyKontaktowe.Add(new OperacjaOsobaKontaktowa { UzytkownikId = uid });
+            var operacja = new PlanowanaOperacja
+            {
+                Numer = numer,
+                NumerZleceniaProjektu = dto.NumerZleceniaProjektu,
+                OpisSkrocony = dto.OpisSkrocony,
+                KmlNazwaPliku = dto.KmlNazwaPliku,
+                KmlZawartosc = dto.KmlZawartosc,
+                LiczbaKmTrasy = dto.LiczbaKmTrasy,
+                ProponowanaDataOd = dto.ProponowanaDataOd,
+                ProponowanaDataDo = dto.ProponowanaDataDo,
+                DodatkoweInfo = dto.DodatkoweInfo,
+                StatusId = StatusOperacji.Wprowadzone,
+                WprowadzajacyId = BiezacyUzytkownikId
+            };
 
-        db.PlanowaneOperacje.Add(operacja);
-        await db.SaveChangesAsync(ct);
+            foreach (var rcId in dto.RodzajeCzynnosciIds)
+                operacja.RodzajeCzynnosci.Add(new OperacjaRodzajCzynnosci { RodzajCzynnosciId = rcId });
+            foreach (var p in dto.PunktyTrasy)
+                operacja.PunktyTrasy.Add(new OperacjaPunktTrasy
+                    { Kolejnosc = p.Kolejnosc, Szerokosc = p.Szerokosc, Dlugosc = p.Dlugosc });
+            foreach (var uid in dto.OsobyKontaktoweIds)
+                operacja.OsobyKontaktowe.Add(new OperacjaOsobaKontaktowa { UzytkownikId = uid });
 
-        db.OperacjeHistoriaZmian.Add(new OperacjaHistoriaZmian
+            db.PlanowaneOperacje.Add(operacja);
+            await db.SaveChangesAsync(ct);
+
+            db.OperacjeHistoriaZmian.Add(new OperacjaHistoriaZmian
+            {
+                OperacjaId = operacja.Id, Pole = "status",
+                StaraWartosc = null, NowaWartosc = StatusOperacji.Wprowadzone.ToString(),
+                ZmienionePrzez = BiezacyUzytkownikId
+            });
+            await db.SaveChangesAsync(ct);
+
+            await transaction.CommitAsync(ct);
+
+            logger.LogInformation("Utworzono operację {Numer} przez użytkownika {UserId}", numer, BiezacyUzytkownikId);
+            return CreatedAtAction(nameof(Szczegoly), new { id = operacja.Id }, ApiResult<int>.Ok(operacja.Id));
+        }
+        catch
         {
-            OperacjaId = operacja.Id, Pole = "status",
-            StaraWartosc = null, NowaWartosc = StatusOperacji.Wprowadzone.ToString(),
-            ZmienionePrzez = BiezacyUzytkownikId
-        });
-        await db.SaveChangesAsync(ct);
-
-        logger.LogInformation("Utworzono operację {Numer} przez użytkownika {UserId}", numer, BiezacyUzytkownikId);
-        return CreatedAtAction(nameof(Szczegoly), new { id = operacja.Id }, ApiResult<int>.Ok(operacja.Id));
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     /// <summary>Aktualizuje planowaną operację lotniczą.</summary>
@@ -158,7 +170,7 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
             StatusOperacji.CzesciowoZrealizowane
         };
 
-        if (BiezacaRola == Role.OsobaPlanjujaca && !dozwoloneStatusy.Contains(o.StatusId))
+        if (BiezacaRola == Role.OsobaPlanujaca && !dozwoloneStatusy.Contains(o.StatusId))
             return StatusCode(403, ApiResult.Fail("Brak uprawnień do edycji operacji w tym statusie."));
 
         o.NumerZleceniaProjektu = dto.NumerZleceniaProjektu;
@@ -212,11 +224,12 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
         var stary = o.StatusId;
         var dozwolone = (BiezacaRola, stary, dto.StatusId) switch
         {
+            (Role.Administrator,   _, _)                                                                     => true,
             (Role.OsobaNadzorujaca, StatusOperacji.Wprowadzone, StatusOperacji.Odrzucone)           => true,
             (Role.OsobaNadzorujaca, StatusOperacji.Wprowadzone, StatusOperacji.PotwierdzoneDoPlan)  => true,
-            (Role.OsobaPlanjujaca,  StatusOperacji.Wprowadzone, StatusOperacji.Rezygnacja)          => true,
-            (Role.OsobaPlanjujaca,  StatusOperacji.PotwierdzoneDoPlan, StatusOperacji.Rezygnacja)   => true,
-            (Role.OsobaPlanjujaca,  StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.Rezygnacja)=> true,
+            (Role.OsobaPlanujaca,   StatusOperacji.Wprowadzone, StatusOperacji.Rezygnacja)          => true,
+            (Role.OsobaPlanujaca,   StatusOperacji.PotwierdzoneDoPlan, StatusOperacji.Rezygnacja)   => true,
+            (Role.OsobaPlanujaca,   StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.Rezygnacja)=> true,
             _ => false
         };
 
@@ -295,7 +308,7 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
 
     private static OperacjaDto MapDoDto(PlanowanaOperacja o) => new(
         o.Id, o.Numer, o.NumerZleceniaProjektu, o.OpisSkrocony,
-        o.KmlNazwaPliku, o.LiczbaKmTrasy,
+        o.KmlNazwaPliku, o.KmlZawartosc, o.LiczbaKmTrasy,
         o.ProponowanaDataOd, o.ProponowanaDataDo,
         o.PlanowanaDataOd, o.PlanowanaDataDo,
         o.DodatkoweInfo, o.Komentarz, o.UwagiPoRealizacji,
@@ -318,4 +331,17 @@ public class OperacjeController(LotyDbContext db, INumeratorService numerator, I
             ZmienionePrzez = BiezacyUzytkownikId
         });
     }
+
+    /// <summary>Lista aktywnych użytkowników do wyboru jako osoby kontaktowe.</summary>
+    [HttpGet("osoby-kontaktowe")]
+    [ProducesResponseType(typeof(ApiResult<List<UzytkownikDto>>), 200)]
+    public async Task<IActionResult> OsobyKontaktowe(CancellationToken ct) =>
+        Ok(ApiResult<List<UzytkownikDto>>.Ok(
+            await db.Uzytkownicy
+                .Include(u => u.Rola)
+                .AsNoTracking()
+                .Where(u => u.Aktywny)
+                .OrderBy(u => u.Nazwisko).ThenBy(u => u.Imie)
+                .Select(u => new UzytkownikDto(u.Id, u.Imie, u.Nazwisko, u.Email, u.RolaId, u.Rola.Nazwa, u.Aktywny))
+                .ToListAsync(ct)));
 }

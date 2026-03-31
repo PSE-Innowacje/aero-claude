@@ -1,26 +1,25 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { tokenStore, logout as apiLogout } from '../services/api';
 
 const AuthContext = createContext(null);
 
-const TOKEN_KEY = 'loty_token';
-const USER_KEY  = 'loty_user';
-
 export function AuthProvider({ children }) {
-  const [token, setToken]   = useState(() => localStorage.getItem(TOKEN_KEY));
-  const [user,  setUser]    = useState(() => {
-    try { return JSON.parse(localStorage.getItem(USER_KEY)); } catch { return null; }
-  });
+  const [token, setToken]   = useState(() => tokenStore.getToken());
+  const [user,  setUser]    = useState(() => tokenStore.getUser());
 
-  const login = useCallback((tokenStr, uzytkownik) => {
-    localStorage.setItem(TOKEN_KEY, tokenStr);
-    localStorage.setItem(USER_KEY, JSON.stringify(uzytkownik));
+  const login = useCallback((tokenStr, refreshToken, uzytkownik) => {
+    tokenStore.set(tokenStr, refreshToken, uzytkownik);
     setToken(tokenStr);
     setUser(uzytkownik);
   }, []);
 
-  const logout = useCallback(() => {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem(USER_KEY);
+  const logout = useCallback(async () => {
+    const refresh = tokenStore.getRefresh();
+    if (refresh) {
+      // Odwołaj refresh token na serwerze (fire-and-forget)
+      await apiLogout(refresh);
+    }
+    tokenStore.clear();
     setToken(null);
     setUser(null);
   }, []);

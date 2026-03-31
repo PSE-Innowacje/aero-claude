@@ -2,6 +2,7 @@ using LotyApi.Common;
 using LotyApi.Data;
 using LotyApi.DTOs;
 using LotyApi.Models;
+using LotyApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,7 +15,7 @@ namespace LotyApi.Controllers;
 [Route("api/uzytkownicy")]
 [Authorize(Roles = Role.Administrator)]
 [Produces("application/json")]
-public class UzytkownicyController(LotyDbContext db) : ControllerBase
+public class UzytkownicyController(LotyDbContext db, IAuthService authService) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResult<List<UzytkownikDto>>), 200)]
@@ -51,7 +52,7 @@ public class UzytkownicyController(LotyDbContext db) : ControllerBase
         {
             Imie = dto.Imie, Nazwisko = dto.Nazwisko,
             Email = dto.Email,
-            HasloHash = BCrypt.Net.BCrypt.HashPassword(dto.Haslo),
+            HasloHash = authService.HashPassword(dto.Haslo),
             RolaId = dto.RolaId
         };
         db.Uzytkownicy.Add(uzytkownik);
@@ -73,6 +74,20 @@ public class UzytkownicyController(LotyDbContext db) : ControllerBase
         await db.SaveChangesAsync(ct);
         return NoContent();
     }
+
+    /// <summary>Lista aktywnych użytkowników do wyboru jako osoby kontaktowe – dostępna dla wszystkich zalogowanych.</summary>
+    [HttpGet("kontakty")]
+    [Authorize]
+    [ProducesResponseType(typeof(ApiResult<List<UzytkownikDto>>), 200)]
+    public async Task<IActionResult> Kontakty(CancellationToken ct) =>
+        Ok(ApiResult<List<UzytkownikDto>>.Ok(
+            await db.Uzytkownicy
+                .Include(u => u.Rola)
+                .AsNoTracking()
+                .Where(u => u.Aktywny)
+                .OrderBy(u => u.Nazwisko).ThenBy(u => u.Imie)
+                .Select(u => new UzytkownikDto(u.Id, u.Imie, u.Nazwisko, u.Email, u.RolaId, u.Rola.Nazwa, u.Aktywny))
+                .ToListAsync(ct)));
 }
 
 // ── Helikoptery ──────────────────────────────────────────────

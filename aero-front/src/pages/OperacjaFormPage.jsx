@@ -1,14 +1,14 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Form, Input, InputNumber, Select, Button, Card,
-  message, Skeleton, DatePicker, Checkbox, Divider, Space, Typography,
+  message, Skeleton, DatePicker, Divider, Space, Typography, Upload,
 } from 'antd';
-import { SaveOutlined, FileTextOutlined } from '@ant-design/icons';
+import { SaveOutlined, FileTextOutlined, UploadOutlined, DeleteOutlined, FileOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
   getOperacjaById, createOperacja, updateOperacja,
-  getRodzajeCzynnosci, getUzytkownicy,
+  getRodzajeCzynnosci, getUzytkownicyKontakty, extractApiError,
 } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
@@ -22,32 +22,75 @@ export default function OperacjaFormPage() {
   const { id }  = useParams();
   const isEdit  = Boolean(id);
 
-  const [loading,   setLoading]   = useState(false);
-  const [initLoad,  setInitLoad]  = useState(isEdit);
-  const [rodzaje,   setRodzaje]   = useState([]);
-  const [uzytkownicy, setUzytkownicy] = useState([]);
+  const [loading,      setLoading]      = useState(false);
+  const [initLoad,     setInitLoad]     = useState(isEdit);
+  const [rodzaje,      setRodzaje]      = useState([]);
+  const [uzytkownicy,  setUzytkownicy]  = useState([]);
+  const [kmlPlik,      setKmlPlik]      = useState(null);   // { nazwa, zawartosc }
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    getRodzajeCzynnosci().then(setRodzaje).catch(() => {});
-    getUzytkownicy().then(setUzytkownicy).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!isEdit) return;
-    setInitLoad(true);
-    getOperacjaById(id)
-      .then(data => {
-        form.setFieldsValue({
-          ...data,
-          proponowanaDataOd: data.proponowanaDataOd ? dayjs(data.proponowanaDataOd) : null,
-          proponowanaDataDo: data.proponowanaDataDo ? dayjs(data.proponowanaDataDo) : null,
-          planowanaDataOd:   data.planowanaDataOd   ? dayjs(data.planowanaDataOd)   : null,
-          planowanaDataDo:   data.planowanaDataDo   ? dayjs(data.planowanaDataDo)   : null,
-        });
+    // Słowniki i dane operacji ładowane razem – form.setFieldsValue wykonuje się
+    // dopiero gdy lista użytkowników jest już dostępna (brak race condition).
+    const promises = [
+      getRodzajeCzynnosci(),
+      getUzytkownicyKontakty(),
+      isEdit ? getOperacjaById(id) : Promise.resolve(null),
+    ];
+    Promise.all(promises)
+      .then(([r, u, data]) => {
+        setRodzaje(r ?? []);
+        setUzytkownicy(u ?? []);
+        if (data) {
+          form.setFieldsValue({
+            ...data,
+            proponowanaDataOd: data.proponowanaDataOd ? dayjs(data.proponowanaDataOd) : null,
+            proponowanaDataDo: data.proponowanaDataDo ? dayjs(data.proponowanaDataDo) : null,
+            planowanaDataOd:   data.planowanaDataOd   ? dayjs(data.planowanaDataOd)   : null,
+            planowanaDataDo:   data.planowanaDataDo   ? dayjs(data.planowanaDataDo)   : null,
+          });
+          if (data.kmlNazwaPliku) {
+            setKmlPlik({ nazwa: data.kmlNazwaPliku, zawartosc: data.kmlZawartosc ?? null });
+          }
+        }
       })
-      .catch(() => message.error('Nie udało się pobrać operacji.'))
+      .catch(err => message.error(extractApiError(err, 'Nie udało się pobrać danych.')))
       .finally(() => setInitLoad(false));
-  }, [id, form, isEdit]);
+  }, [id, isEdit]);
+
+  const handleKmlFile = (file) => {
+    const isJson = file.name.toLowerCase().endsWith('.json');
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const zawartosc = e.target.result;
+      if (isJson) {
+        try {
+          const json = JSON.parse(zawartosc);
+          const dystans = json?.totalDistanceKm;
+          if (dystans !== undefined && dystans !== null) {
+            form.setFieldsValue({ liczbaKmTrasy: Math.round(Number(dystans)) });
+            message.success(`Wczytano trasę: ${Math.round(Number(dystans))} km`);
+          } else {
+            message.warning('Plik JSON nie zawiera pola "totalDistanceKm".');
+          }
+          setKmlPlik({ nazwa: file.name, zawartosc });
+        } catch {
+          message.error('Nieprawidłowy format pliku JSON.');
+        }
+      } else {
+        setKmlPlik({ nazwa: file.name, zawartosc });
+      }
+      // reset inputa – umożliwia ponowny wybór tego samego pliku
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.onerror = () => message.error('Nie udało się odczytać pliku.');
+    reader.readAsText(file, 'UTF-8');
+  };
+
+  const usunKmlPlik = () => {
+    setKmlPlik(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
 
   const onFinish = async (values) => {
     setLoading(true);
@@ -57,9 +100,12 @@ export default function OperacjaFormPage() {
       proponowanaDataDo: values.proponowanaDataDo?.format('YYYY-MM-DD') ?? null,
       planowanaDataOd:   values.planowanaDataOd?.format('YYYY-MM-DD')   ?? null,
       planowanaDataDo:   values.planowanaDataDo?.format('YYYY-MM-DD')   ?? null,
+      liczbaKmTrasy:       Math.round(values.liczbaKmTrasy ?? 0),
       rodzajeCzynnosciIds: values.rodzajeCzynnosciIds ?? [],
       punktyTrasy:         [],
       osobyKontaktoweIds:  values.osobyKontaktoweIds ?? [],
+      kmlNazwaPliku:       kmlPlik?.nazwa ?? null,
+      kmlZawartosc:        kmlPlik?.zawartosc ?? null,
     };
     try {
       if (isEdit) {
@@ -71,8 +117,7 @@ export default function OperacjaFormPage() {
       }
       navigate('/operacje');
     } catch (err) {
-      const errors = err?.response?.data?.errors;
-      message.error(errors?.join(', ') ?? 'Błąd podczas zapisywania.');
+      message.error(extractApiError(err, 'Błąd podczas zapisywania.'));
     } finally {
       setLoading(false);
     }
@@ -159,8 +204,51 @@ export default function OperacjaFormPage() {
               </Form.Item>
             )}
 
-            <Form.Item label="Plik KML – nazwa" name="kmlNazwaPliku">
-              <Input placeholder="np. krajnik_plewiska.kml" />
+            <Form.Item label="Plik KML">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".kml,.xml,.json"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleKmlFile(file);
+                    // reset jest wykonywany wewnątrz handleKmlFile po odczytaniu pliku
+                  }}
+                />
+                <Button
+                  icon={<UploadOutlined />}
+                  onClick={() => fileInputRef.current?.click()}
+                  size="large"
+                  style={{ width: 'fit-content' }}
+                >
+                  Wybierz plik KML…
+                </Button>
+                {kmlPlik ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '8px 12px', borderRadius: 8,
+                    background: 'rgba(82,196,26,0.08)',
+                    border: '1px solid rgba(82,196,26,0.3)',
+                  }}>
+                    <FileOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                    <Text style={{ flex: 1, color: '#389e0d', fontWeight: 500, fontSize: 13 }}>
+                      {kmlPlik.nazwa}
+                    </Text>
+                    <Button
+                      type="text" danger size="small"
+                      icon={<DeleteOutlined />}
+                      onClick={usunKmlPlik}
+                      title="Usuń plik"
+                    />
+                  </div>
+                ) : (
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    Brak wybranego pliku. Akceptowane formaty: .kml, .xml
+                  </Text>
+                )}
+              </div>
             </Form.Item>
 
             <Form.Item label="Osoby kontaktowe" name="osobyKontaktoweIds">

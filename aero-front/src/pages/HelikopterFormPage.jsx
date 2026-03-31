@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Form, Input, InputNumber, Select, Button, Card, message, Skeleton, DatePicker } from 'antd';
-import { SaveOutlined, CarOutlined } from '@ant-design/icons';
+import { SaveOutlined, SendOutlined} from '@ant-design/icons';
 import dayjs from 'dayjs';
-import { getHelikopterById, createHelikopter, updateHelikopter } from '../services/api';
+import { getHelikopterById, createHelikopter, updateHelikopter, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
 
 const { Option } = Select;
@@ -24,7 +24,7 @@ export default function HelikopterFormPage() {
         ...data,
         dataWaznosciPrzegladu: data.dataWaznosciPrzegladu ? dayjs(data.dataWaznosciPrzegladu) : null,
       });
-    }).catch(() => message.error('Błąd ładowania.')).finally(() => setInitLoad(false));
+    }).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
   }, [id, form, isEdit]);
 
   const onFinish = async (values) => {
@@ -38,7 +38,7 @@ export default function HelikopterFormPage() {
       message.success(isEdit ? 'Zaktualizowano!' : 'Dodano!');
       navigate('/helikoptery');
     } catch (err) {
-      message.error(err?.response?.data?.errors?.join(', ') ?? 'Błąd.');
+      message.error(extractApiError(err));
     } finally {
       setLoading(false);
     }
@@ -47,7 +47,7 @@ export default function HelikopterFormPage() {
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
       <PageHeader
-        icon={<CarOutlined style={{ color: '#fff', fontSize: 20 }} />}
+        icon={<SendOutlined style={{ color: '#fff', fontSize: 20 }} />}
         gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
         title={isEdit ? 'Edytuj helikopter' : 'Nowy helikopter'}
         backTo="/helikoptery"

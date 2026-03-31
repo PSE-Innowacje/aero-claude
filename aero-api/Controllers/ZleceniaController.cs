@@ -35,8 +35,8 @@ public class ZleceniaController(LotyDbContext db, INumeratorService numerator, I
             .AsNoTracking()
             .AsQueryable();
 
-        var filtr = q.StatusId ?? StatusZlecenia.PrzekazaneDoCkceptacji;
-        query = query.Where(z => z.StatusId == filtr);
+        if (q.StatusId.HasValue)
+            query = query.Where(z => z.StatusId == q.StatusId.Value);
 
         if (q.PilotId.HasValue)    query = query.Where(z => z.PilotId == q.PilotId);
         if (q.HelikopterId.HasValue) query = query.Where(z => z.HelikopterId == q.HelikopterId);
@@ -78,7 +78,7 @@ public class ZleceniaController(LotyDbContext db, INumeratorService numerator, I
             .Include(x => x.LadowiskoKoncowe)
             .Include(x => x.Tworzacy)
             .Include(x => x.CzlonkowieZalogi).ThenInclude(c => c.Czlonek)
-            .Include(x => x.ZlecenieOperacje)
+            .Include(x => x.ZlecenieOperacje).ThenInclude(zo => zo.Operacja).ThenInclude(o => o.Status)
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.Id == id, ct);
 
@@ -88,68 +88,79 @@ public class ZleceniaController(LotyDbContext db, INumeratorService numerator, I
 
     /// <summary>Tworzy nowe zlecenie na lot. Pilot uzupełniany automatycznie z zalogowanego użytkownika.</summary>
     [HttpPost]
-    [Authorize(Roles = Role.Pilot)]
+    [Authorize(Roles = Role.PilotGroup)]
     [ProducesResponseType(typeof(ApiResult<int>), 201)]
     [ProducesResponseType(400)]
     public async Task<IActionResult> Utworz([FromBody] UtworzZlecenieDto dto, CancellationToken ct)
     {
-        var pilot = await db.CzlonkowieZalogi
-            .Include(c => c.Rola)
-            .FirstOrDefaultAsync(c =>
-                c.Email == User.FindFirstValue(ClaimTypes.Email) && c.Aktywny, ct);
-
-        if (pilot is null)
-            return BadRequest(ApiResult.Fail("Bieżący użytkownik nie jest aktywnym członkiem załogi."));
-
-        var helikopter = await db.Helikoptery.FindAsync([dto.HelikopterId], ct);
-        if (helikopter is null) return BadRequest(ApiResult.Fail("Nie znaleziono helikoptera."));
-
-        var czlonkowie = await db.CzlonkowieZalogi
-            .Where(c => dto.CzlonkowieZalogiIds.Contains(c.Id)).ToListAsync(ct);
-
-        var bledy = WalidujZlecenie(dto, pilot, helikopter, czlonkowie);
-        if (bledy.Count > 0) return BadRequest(ApiResult.Fail(bledy));
-
-        var wagaZalogi = pilot.WagaKg + czlonkowie.Sum(c => c.WagaKg);
-        var numer = await numerator.NastepnyNumerZleceniaAsync();
-
-        var zlecenie = new ZlecenieNaLot
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            Numer = numer,
-            PlanowanyStartDt = dto.PlanowanyStartDt,
-            PlanowaneLadowanieDt = dto.PlanowaneLadowanieDt,
-            PilotId = pilot.Id,
-            HelikopterId = dto.HelikopterId,
-            LadowiskoStartoweId = dto.LadowiskoStartoweId,
-            LadowiskoKoncoweId = dto.LadowiskoKoncoweId,
-            SzacowanaDlugoscTrasy = dto.SzacowanaDlugoscTrasy,
-            WagaZalogiKg = wagaZalogi,
-            StatusId = StatusZlecenia.Wprowadzone,
-            TworzacyId = BiezacyUzytkownikId
-        };
+            var pilot = await db.CzlonkowieZalogi
+                .Include(c => c.Rola)
+                .FirstOrDefaultAsync(c =>
+                    c.Email == User.FindFirstValue(ClaimTypes.Email) && c.Aktywny, ct);
 
-        foreach (var cId in dto.CzlonkowieZalogiIds)
-            zlecenie.CzlonkowieZalogi.Add(new ZlecienieCzlonekZalogi { CzlonekId = cId });
-        foreach (var oId in dto.OperacjeIds)
-            zlecenie.ZlecenieOperacje.Add(new ZlecenieOperacja { OperacjaId = oId });
+            if (pilot is null)
+                return BadRequest(ApiResult.Fail("Bieżący użytkownik nie jest aktywnym członkiem załogi."));
 
-        db.ZleceniaNaLot.Add(zlecenie);
+            var helikopter = await db.Helikoptery.FindAsync([dto.HelikopterId], ct);
+            if (helikopter is null) return BadRequest(ApiResult.Fail("Nie znaleziono helikoptera."));
 
-        // Automatycznie: operacje 3→4
-        var operacje = await db.PlanowaneOperacje
-            .Where(o => dto.OperacjeIds.Contains(o.Id)).ToListAsync(ct);
+            var czlonkowie = await db.CzlonkowieZalogi
+                .Where(c => dto.CzlonkowieZalogiIds.Contains(c.Id)).ToListAsync(ct);
 
-        foreach (var op in operacje.Where(o => o.StatusId == StatusOperacji.PotwierdzoneDoPlan))
-        {
-            DodajHistorieOperacji(op.Id, "status",
-                StatusOperacji.PotwierdzoneDoPlan.ToString(),
-                StatusOperacji.ZaplanowaneDoZlecenia.ToString());
-            op.StatusId = StatusOperacji.ZaplanowaneDoZlecenia;
+            var bledy = WalidujZlecenie(dto, pilot, helikopter, czlonkowie);
+            if (bledy.Count > 0) return BadRequest(ApiResult.Fail(bledy));
+
+            var wagaZalogi = pilot.WagaKg + czlonkowie.Sum(c => c.WagaKg);
+            var numer = await numerator.NastepnyNumerZleceniaAsync();
+
+            var zlecenie = new ZlecenieNaLot
+            {
+                Numer = numer,
+                PlanowanyStartDt = dto.PlanowanyStartDt,
+                PlanowaneLadowanieDt = dto.PlanowaneLadowanieDt,
+                PilotId = pilot.Id,
+                HelikopterId = dto.HelikopterId,
+                LadowiskoStartoweId = dto.LadowiskoStartoweId,
+                LadowiskoKoncoweId = dto.LadowiskoKoncoweId,
+                SzacowanaDlugoscTrasy = dto.SzacowanaDlugoscTrasy,
+                WagaZalogiKg = wagaZalogi,
+                StatusId = StatusZlecenia.Wprowadzone,
+                TworzacyId = BiezacyUzytkownikId
+            };
+
+            foreach (var cId in dto.CzlonkowieZalogiIds)
+                zlecenie.CzlonkowieZalogi.Add(new ZlecienieCzlonekZalogi { CzlonekId = cId });
+            foreach (var oId in dto.OperacjeIds)
+                zlecenie.ZlecenieOperacje.Add(new ZlecenieOperacja { OperacjaId = oId });
+
+            db.ZleceniaNaLot.Add(zlecenie);
+
+            // Automatycznie: operacje 3→4
+            var operacje = await db.PlanowaneOperacje
+                .Where(o => dto.OperacjeIds.Contains(o.Id)).ToListAsync(ct);
+
+            foreach (var op in operacje.Where(o => o.StatusId == StatusOperacji.PotwierdzoneDoPlan))
+            {
+                DodajHistorieOperacji(op.Id, "status",
+                    StatusOperacji.PotwierdzoneDoPlan.ToString(),
+                    StatusOperacji.ZaplanowaneDoZlecenia.ToString());
+                op.StatusId = StatusOperacji.ZaplanowaneDoZlecenia;
+            }
+
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            logger.LogInformation("Utworzono zlecenie {Numer} przez pilota {UserId}", numer, BiezacyUzytkownikId);
+            return CreatedAtAction(nameof(Szczegoly), new { id = zlecenie.Id }, ApiResult<int>.Ok(zlecenie.Id));
         }
-
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("Utworzono zlecenie {Numer} przez pilota {UserId}", numer, BiezacyUzytkownikId);
-        return CreatedAtAction(nameof(Szczegoly), new { id = zlecenie.Id }, ApiResult<int>.Ok(zlecenie.Id));
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     /// <summary>Aktualizuje zlecenie na lot.</summary>
@@ -205,60 +216,72 @@ public class ZleceniaController(LotyDbContext db, INumeratorService numerator, I
     [ProducesResponseType(404)]
     public async Task<IActionResult> ZmienStatus(int id, [FromBody] ZmienStatusZlecenieDto dto, CancellationToken ct)
     {
-        var z = await db.ZleceniaNaLot
-            .Include(x => x.ZlecenieOperacje)
-            .FirstOrDefaultAsync(x => x.Id == id, ct);
-
-        if (z is null) return NotFound(ApiResult.Fail($"Zlecenie {id} nie istnieje."));
-
-        var stary = z.StatusId;
-        var dozwolone = (BiezacaRola, stary, dto.StatusId) switch
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        try
         {
-            (Role.Pilot,            StatusZlecenia.Wprowadzone,          StatusZlecenia.PrzekazaneDoCkceptacji) => true,
-            (Role.OsobaNadzorujaca, StatusZlecenia.PrzekazaneDoCkceptacji, StatusZlecenia.Odrzucone)            => true,
-            (Role.OsobaNadzorujaca, StatusZlecenia.PrzekazaneDoCkceptacji, StatusZlecenia.Zaakceptowane)        => true,
-            (Role.Pilot,            StatusZlecenia.Zaakceptowane,         StatusZlecenia.ZrealizowaneWCzesci)   => true,
-            (Role.Pilot,            StatusZlecenia.Zaakceptowane,         StatusZlecenia.ZrealizowaneWCalosci)  => true,
-            (Role.Pilot,            StatusZlecenia.Zaakceptowane,         StatusZlecenia.NieZrealizowane)       => true,
-            _ => false
-        };
+            var z = await db.ZleceniaNaLot
+                .Include(x => x.ZlecenieOperacje)
+                .FirstOrDefaultAsync(x => x.Id == id, ct);
 
-        if (!dozwolone)
-            return BadRequest(ApiResult.Fail(
-                $"Niedozwolona zmiana statusu z {stary} na {dto.StatusId} dla roli '{BiezacaRola}'."));
+            if (z is null) return NotFound(ApiResult.Fail($"Zlecenie {id} nie istnieje."));
 
-        if (dto.StatusId is StatusZlecenia.ZrealizowaneWCzesci or StatusZlecenia.ZrealizowaneWCalosci
-            && (z.RzeczywistyStartDt is null || z.RzeczywisteLadowanieDt is null))
-            return BadRequest(ApiResult.Fail("Wymagane rzeczywiste czasy startu i lądowania."));
-
-        DodajHistorieZlecenia(id, "status", stary.ToString(), dto.StatusId.ToString());
-        z.StatusId = dto.StatusId;
-        z.UpdatedAt = DateTime.UtcNow;
-
-        // Kaskadowe zmiany statusów operacji
-        var operacjeIds = z.ZlecenieOperacje.Select(zo => zo.OperacjaId).ToList();
-        var operacje = await db.PlanowaneOperacje
-            .Where(o => operacjeIds.Contains(o.Id)).ToListAsync(ct);
-
-        foreach (var op in operacje)
-        {
-            var (staryOp, nowyOp) = dto.StatusId switch
+            var stary = z.StatusId;
+            var dozwolone = (BiezacaRola, stary, dto.StatusId) switch
             {
-                StatusZlecenia.ZrealizowaneWCzesci  => (StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.CzesciowoZrealizowane),
-                StatusZlecenia.ZrealizowaneWCalosci => (StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.Zrealizowane),
-                StatusZlecenia.NieZrealizowane      => (StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.PotwierdzoneDoPlan),
-                _ => (0, 0)
+                (Role.Administrator,    _, _)                                                                       => true,
+                (Role.Pilot,            StatusZlecenia.Wprowadzone,          StatusZlecenia.PrzekazaneDoAkceptacji) => true,
+                (Role.OsobaNadzorujaca, StatusZlecenia.PrzekazaneDoAkceptacji, StatusZlecenia.Odrzucone)            => true,
+                (Role.OsobaNadzorujaca, StatusZlecenia.PrzekazaneDoAkceptacji, StatusZlecenia.Zaakceptowane)        => true,
+                (Role.Pilot,            StatusZlecenia.Zaakceptowane,         StatusZlecenia.ZrealizowaneWCzesci)   => true,
+                (Role.Pilot,            StatusZlecenia.Zaakceptowane,         StatusZlecenia.ZrealizowaneWCalosci)  => true,
+                (Role.Pilot,            StatusZlecenia.Zaakceptowane,         StatusZlecenia.NieZrealizowane)       => true,
+                _ => false
             };
-            if (nowyOp != 0 && op.StatusId == staryOp)
-            {
-                DodajHistorieOperacji(op.Id, "status", staryOp.ToString(), nowyOp.ToString());
-                op.StatusId = nowyOp;
-            }
-        }
 
-        await db.SaveChangesAsync(ct);
-        logger.LogInformation("Status zlecenia {Id} zmieniony {Stary}→{Nowy}", id, stary, dto.StatusId);
-        return NoContent();
+            if (!dozwolone)
+                return BadRequest(ApiResult.Fail(
+                    $"Niedozwolona zmiana statusu z {stary} na {dto.StatusId} dla roli '{BiezacaRola}'."));
+
+            if (dto.StatusId is StatusZlecenia.ZrealizowaneWCzesci or StatusZlecenia.ZrealizowaneWCalosci
+                && (z.RzeczywistyStartDt is null || z.RzeczywisteLadowanieDt is null))
+                return BadRequest(ApiResult.Fail("Wymagane rzeczywiste czasy startu i lądowania."));
+
+            DodajHistorieZlecenia(id, "status", stary.ToString(), dto.StatusId.ToString());
+            z.StatusId = dto.StatusId;
+            z.UpdatedAt = DateTime.UtcNow;
+
+            // Kaskadowe zmiany statusów operacji
+            var operacjeIds = z.ZlecenieOperacje.Select(zo => zo.OperacjaId).ToList();
+            var operacje = await db.PlanowaneOperacje
+                .Where(o => operacjeIds.Contains(o.Id)).ToListAsync(ct);
+
+            foreach (var op in operacje)
+            {
+                var (staryOp, nowyOp) = dto.StatusId switch
+                {
+                    StatusZlecenia.ZrealizowaneWCzesci  => (StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.CzesciowoZrealizowane),
+                    StatusZlecenia.ZrealizowaneWCalosci => (StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.Zrealizowane),
+                    StatusZlecenia.NieZrealizowane      => (StatusOperacji.ZaplanowaneDoZlecenia, StatusOperacji.PotwierdzoneDoPlan),
+                    _ => (0, 0)
+                };
+                if (nowyOp != 0 && op.StatusId == staryOp)
+                {
+                    DodajHistorieOperacji(op.Id, "status", staryOp.ToString(), nowyOp.ToString());
+                    op.StatusId = nowyOp;
+                }
+            }
+
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+
+            logger.LogInformation("Status zlecenia {Id} zmieniony {Stary}→{Nowy}", id, stary, dto.StatusId);
+            return NoContent();
+        }
+        catch
+        {
+            await transaction.RollbackAsync(ct);
+            throw;
+        }
     }
 
     /// <summary>Pobiera historię zmian statusów zlecenia.</summary>
@@ -324,7 +347,7 @@ public class ZleceniaController(LotyDbContext db, INumeratorService numerator, I
         z.StatusId, z.Status.Nazwa,
         z.CzlonkowieZalogi.Select(c => c.CzlonekId).ToList(),
         z.CzlonkowieZalogi.Select(c => c.Czlonek.Imie + " " + c.Czlonek.Nazwisko).ToList(),
-        z.ZlecenieOperacje.Select(o => o.OperacjaId).ToList(),
+        z.ZlecenieOperacje.Select(o => new OperacjaSkrotDto(o.OperacjaId, o.Operacja.Numer, o.Operacja.OpisSkrocony, o.Operacja.StatusId, o.Operacja.Status.Nazwa)).ToList(),
         z.CreatedAt, z.UpdatedAt);
 
     private void DodajHistorieZlecenia(int zlecenieId, string pole, string? stara, string? nowa)

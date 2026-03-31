@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Card, Input, Select, Tooltip, message, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, EyeOutlined, SearchOutlined, RocketOutlined } from '@ant-design/icons';
-import { getZlecenia, getStatusyZlecen } from '../services/api';
+import { getZlecenia, getStatusyZlecen, extractApiError } from '../services/api';
 import { StatusZleceniaTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -18,7 +18,7 @@ export default function ZleceniaPage() {
   const [data,    setData]    = useState({ items: [], lacznaLiczba: 0 });
   const [statusy, setStatusy] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ statusId: 2, strona: 1, rozmiarStrony: 20 });
+  const [filters, setFilters] = useState({ statusId: null, strona: 1, rozmiarStrony: 20 });
   const [search,  setSearch]  = useState('');
 
   const fetch = useCallback(async (f) => {
@@ -26,8 +26,8 @@ export default function ZleceniaPage() {
     try {
       const result = await getZlecenia(f);
       setData(result ?? { items: [], lacznaLiczba: 0 });
-    } catch {
-      message.error('Nie udało się pobrać zleceń.');
+    } catch (err) {
+      message.error(extractApiError(err, 'Nie udało się pobrać zleceń.'));
     } finally {
       setLoading(false);
     }
@@ -114,7 +114,7 @@ export default function ZleceniaPage() {
             </Col>
             <Col xs={24} sm={8}>
               <Select style={{ width: '100%' }} placeholder="Status" value={filters.statusId}
-                allowClear onChange={v => setFilters(f => ({ ...f, statusId: v ?? 2, strona: 1 }))}>
+                allowClear onChange={v => setFilters(f => ({ ...f, statusId: v ?? null, strona: 1 }))}>
                 {statusy.map(s => <Option key={s.id} value={s.id}>{s.nazwa}</Option>)}
               </Select>
             </Col>
