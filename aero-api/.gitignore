@@ -12,7 +12,6 @@ obj/
 *.swp
 
 ## SQLite
-*.db
 *.db-shm
 *.db-wal
 
