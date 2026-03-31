@@ -41,6 +41,9 @@ try
     // ── Serwisy aplikacji ─────────────────────────────────────
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<INumeratorService, NumeratorService>();
+    builder.Services.AddScoped<IOperacjaService, OperacjaService>();
+    builder.Services.AddScoped<IZlecenieService, ZlecenieService>();
+    builder.Services.AddScoped<IAdministracjaService, AdministracjaService>();
 
     // ── FluentValidation ──────────────────────────────────────
     builder.Services.AddFluentValidationAutoValidation();
