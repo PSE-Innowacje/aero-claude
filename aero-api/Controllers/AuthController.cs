@@ -9,6 +9,7 @@ namespace LotyApi.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[AllowAnonymous]
 [Produces("application/json")]
 public class AuthController(IAuthService authService) : ControllerBase
 {

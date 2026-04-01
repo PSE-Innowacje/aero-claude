@@ -32,6 +32,10 @@ try
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
+    // ── Limity Kestrel ───────────────────────────────────────
+    builder.WebHost.ConfigureKestrel(o =>
+        o.Limits.MaxRequestBodySize = 5 * 1024 * 1024); // 5 MB
+
     // ── Baza danych ──────────────────────────────────────────
     builder.Services.AddDbContext<LotyDbContext>(opt =>
         opt.UseSqlite(
@@ -48,6 +52,7 @@ try
     builder.Services.AddScoped<ICzlonekZalogiService, CzlonekZalogiService>();
     builder.Services.AddScoped<ILadowiskoService, LadowiskoService>();
     builder.Services.AddScoped<ISlownikService, SlownikService>();
+    builder.Services.AddHostedService<RefreshTokenCleanupService>();
 
     // ── FluentValidation ──────────────────────────────────────
     builder.Services.AddFluentValidationAutoValidation();
@@ -99,7 +104,12 @@ try
     });
 
     // ── Kontrolery z konfiguracją JSON ────────────────────────
-    builder.Services.AddControllers()
+    builder.Services.AddControllers(opt =>
+        {
+            // Globalny filtr [Authorize] — każdy endpoint wymaga uwierzytelnienia,
+            // chyba że oznaczony [AllowAnonymous].
+            opt.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter());
+        })
         .AddJsonOptions(opt =>
         {
             opt.JsonSerializerOptions.PropertyNamingPolicy =
@@ -157,8 +167,8 @@ try
             .AllowAnyMethod());
         opt.AddPolicy("Prod", p => p
             .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+            .WithHeaders("Content-Type", "Authorization")
+            .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE"));
     });
 
     // ── Health checks ─────────────────────────────────────────
@@ -208,7 +218,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
-    // Health check — publiczny endpoint bez szczegółów, szczegółowy z autoryzacją
+    // Health check — publiczny endpoint bez szczegółów
     app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
         ResponseWriter = async (context, report) =>
@@ -217,7 +227,7 @@ try
             var result = new { status = report.Status.ToString() };
             await context.Response.WriteAsJsonAsync(result);
         }
-    });
+    }).AllowAnonymous();
 
     // ── DB Init — migracje EF Core ──────────────────────────
     using (var scope = app.Services.CreateScope())
