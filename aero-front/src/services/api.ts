@@ -5,9 +5,11 @@ import type {
   OperacjaListDto, OperacjaDto, KomentarzDto, HistoriaZmianyDto,
   ZlecenieListDto, ZlecenieDto,
   OperacjeQuery, ZleceniaQuery,
+  OperacjaPayload, ZleceniePayload, HelikopterPayload,
+  CzlonekZalogiPayload, LadowiskoPayload, UzytkownikPayload,
 } from '../types/api';
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_BASE ?? '/api';
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -47,6 +49,17 @@ export const tokenStore: TokenStore = {
   },
 };
 
+// ── Auth expiry event ────────────────────────────────────────
+// Instead of window.location.href = '/login', we dispatch a custom event
+// that AuthContext listens to, keeping navigation inside React Router.
+
+export const AUTH_EXPIRED_EVENT = 'auth:expired';
+
+function dispatchAuthExpired() {
+  tokenStore.clear();
+  window.dispatchEvent(new CustomEvent(AUTH_EXPIRED_EVENT));
+}
+
 // ── Interceptors ──────────────────────────────────────────────
 
 api.interceptors.request.use((cfg: InternalAxiosRequestConfig) => {
@@ -55,7 +68,6 @@ api.interceptors.request.use((cfg: InternalAxiosRequestConfig) => {
   return cfg;
 });
 
-// Automatyczny refresh przy 401
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (token: string) => void;
@@ -92,16 +104,15 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = tokenStore.getRefresh();
-      if (!refreshToken) {
-        tokenStore.clear();
-        window.location.href = '/login';
+      const refreshTokenValue = tokenStore.getRefresh();
+      if (!refreshTokenValue) {
+        dispatchAuthExpired();
         return Promise.reject(err);
       }
 
       try {
         const { data } = await axios.post<ApiResult<LoginResponseDto>>(
-          `${API_BASE}/auth/refresh`, { refreshToken }
+          `${API_BASE}/auth/refresh`, { refreshToken: refreshTokenValue }
         );
         const result = data?.data ?? (data as unknown as LoginResponseDto);
         tokenStore.set(result.token, result.refreshToken, result.uzytkownik);
@@ -111,8 +122,7 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshErr) {
         processQueue(refreshErr, null);
-        tokenStore.clear();
-        window.location.href = '/login';
+        dispatchAuthExpired();
         return Promise.reject(refreshErr);
       } finally {
         isRefreshing = false;
@@ -120,8 +130,7 @@ api.interceptors.response.use(
     }
 
     if (err.response?.status === 401) {
-      tokenStore.clear();
-      window.location.href = '/login';
+      dispatchAuthExpired();
     }
 
     return Promise.reject(err);
@@ -130,21 +139,25 @@ api.interceptors.response.use(
 
 // ── Helpers ───────────────────────────────────────────────────
 
-/** Odpakuj data.data (ApiResult<T>) */
 function unwrap<T>(r: { data: ApiResult<T> }): T {
   return (r.data?.data ?? r.data) as T;
 }
 
-/** Wyciąga czytelny komunikat błędu z odpowiedzi API. */
-export const extractApiError = (err: unknown, fallback = 'Wystąpił nieoczekiwany błąd.'): string => {
-  const axErr = err as AxiosError<{ errors?: string[] | Record<string, string[]>; message?: string; title?: string }>;
-  const data = axErr?.response?.data;
+/** Extract a readable error message from an API response. */
+export function extractApiError(err: unknown, fallback = 'Wystąpił nieoczekiwany błąd.'): string {
+  if (!axios.isAxiosError(err)) {
+    return err instanceof Error ? err.message : fallback;
+  }
+
+  const data = err.response?.data as
+    | { errors?: string[] | Record<string, string[]>; message?: string; title?: string }
+    | undefined;
 
   if (Array.isArray(data?.errors) && data.errors.length) {
     return data.errors.join('\n');
   }
 
-  if (typeof data?.errors === 'object' && !Array.isArray(data.errors)) {
+  if (data?.errors && typeof data.errors === 'object' && !Array.isArray(data.errors)) {
     const msgs = Object.values(data.errors).flat();
     if (msgs.length) return msgs.join('\n');
   }
@@ -152,28 +165,28 @@ export const extractApiError = (err: unknown, fallback = 'Wystąpił nieoczekiwa
   if (data?.message) return data.message;
   if (data?.title)   return data.title;
 
-  if (axErr?.response?.status === 429)
+  if (err.response?.status === 429)
     return 'Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.';
 
-  if (axErr?.response?.status) {
-    return `Błąd ${axErr.response.status}: ${axErr.response.statusText || 'nieznany błąd serwera'}`;
+  if (err.response?.status) {
+    return `Błąd ${err.response.status}: ${err.response.statusText || 'nieznany błąd serwera'}`;
   }
 
-  if (axErr?.message) return axErr.message;
+  if (err.message) return err.message;
 
   return fallback;
-};
+}
 
 // ── Auth ──────────────────────────────────────────────────────
 
 export const login = (email: string, haslo: string): Promise<LoginResponseDto> =>
   api.post('/auth/login', { email, haslo }).then(unwrap);
 
-export const refreshToken = (refreshToken: string): Promise<LoginResponseDto> =>
-  api.post('/auth/refresh', { refreshToken }).then(unwrap);
+export const refreshToken = (rt: string): Promise<LoginResponseDto> =>
+  api.post('/auth/refresh', { refreshToken: rt }).then(unwrap);
 
-export const logout = (refreshToken: string): Promise<void> =>
-  api.post('/auth/logout', { refreshToken }).then(() => {}).catch(() => {});
+export const logout = (rt: string): Promise<void> =>
+  api.post('/auth/logout', { refreshToken: rt }).then(() => undefined).catch(() => undefined);
 
 // ── Słowniki ──────────────────────────────────────────────────
 
@@ -185,75 +198,92 @@ export const getStatusyZlecen     = (): Promise<SlownikDto[]> => api.get('/slown
 
 // ── Użytkownicy ───────────────────────────────────────────────
 
-export const getUzytkownicy        = (): Promise<UzytkownikDto[]> => api.get('/uzytkownicy').then(unwrap);
-export const getUzytkownicyKontakty = (): Promise<UzytkownikDto[]> => api.get('/operacje/osoby-kontaktowe').then(unwrap);
-export const getUzytkownikById     = (id: number): Promise<UzytkownikDto> => api.get(`/uzytkownicy/${id}`).then(unwrap);
-export const createUzytkownik      = (data: Record<string, unknown>): Promise<number> => api.post('/uzytkownicy', data).then(unwrap);
-export const updateUzytkownik      = (id: number, data: Record<string, unknown>) => api.put(`/uzytkownicy/${id}`, data);
+export const getUzytkownicy        = (signal?: AbortSignal): Promise<UzytkownikDto[]> =>
+  api.get('/uzytkownicy', { signal }).then(unwrap);
+export const getUzytkownicyKontakty = (signal?: AbortSignal): Promise<UzytkownikDto[]> =>
+  api.get('/operacje/osoby-kontaktowe', { signal }).then(unwrap);
+export const getUzytkownikById     = (id: number, signal?: AbortSignal): Promise<UzytkownikDto> =>
+  api.get(`/uzytkownicy/${id}`, { signal }).then(unwrap);
+export const createUzytkownik      = (data: UzytkownikPayload): Promise<number> =>
+  api.post('/uzytkownicy', data).then(unwrap);
+export const updateUzytkownik      = (id: number, data: UzytkownikPayload) =>
+  api.put(`/uzytkownicy/${id}`, data);
 
 // ── Helikoptery ───────────────────────────────────────────────
 
-export const getHelikoptery    = (): Promise<HelikopterDto[]> => api.get('/helikoptery').then(unwrap);
-export const getHelikopterById = (id: number): Promise<HelikopterDto> => api.get(`/helikoptery/${id}`).then(unwrap);
-export const createHelikopter  = (data: Record<string, unknown>): Promise<number> => api.post('/helikoptery', data).then(unwrap);
-export const updateHelikopter  = (id: number, data: Record<string, unknown>) => api.put(`/helikoptery/${id}`, data);
+export const getHelikoptery    = (signal?: AbortSignal): Promise<HelikopterDto[]> =>
+  api.get('/helikoptery', { signal }).then(unwrap);
+export const getHelikopterById = (id: number, signal?: AbortSignal): Promise<HelikopterDto> =>
+  api.get(`/helikoptery/${id}`, { signal }).then(unwrap);
+export const createHelikopter  = (data: HelikopterPayload): Promise<number> =>
+  api.post('/helikoptery', data).then(unwrap);
+export const updateHelikopter  = (id: number, data: HelikopterPayload) =>
+  api.put(`/helikoptery/${id}`, data);
 
 // ── Członkowie załogi ─────────────────────────────────────────
 
-export const getCzlonkowie  = (): Promise<CzlonekZalogiDto[]> => api.get('/czlonkowie-zalogi').then(unwrap);
-export const getCzlonekById = (id: number): Promise<CzlonekZalogiDto> => api.get(`/czlonkowie-zalogi/${id}`).then(unwrap);
-export const createCzlonek  = (data: Record<string, unknown>): Promise<number> => api.post('/czlonkowie-zalogi', data).then(unwrap);
-export const updateCzlonek  = (id: number, data: Record<string, unknown>) => api.put(`/czlonkowie-zalogi/${id}`, data);
+export const getCzlonkowie  = (signal?: AbortSignal): Promise<CzlonekZalogiDto[]> =>
+  api.get('/czlonkowie-zalogi', { signal }).then(unwrap);
+export const getCzlonekById = (id: number, signal?: AbortSignal): Promise<CzlonekZalogiDto> =>
+  api.get(`/czlonkowie-zalogi/${id}`, { signal }).then(unwrap);
+export const createCzlonek  = (data: CzlonekZalogiPayload): Promise<number> =>
+  api.post('/czlonkowie-zalogi', data).then(unwrap);
+export const updateCzlonek  = (id: number, data: CzlonekZalogiPayload) =>
+  api.put(`/czlonkowie-zalogi/${id}`, data);
 
 // ── Lądowiska ─────────────────────────────────────────────────
 
-export const getLadowiska    = (): Promise<LadowiskoDto[]> => api.get('/ladowiska').then(unwrap);
-export const getLadowiskoById = (id: number): Promise<LadowiskoDto> => api.get(`/ladowiska/${id}`).then(unwrap);
-export const createLadowisko = (data: Record<string, unknown>): Promise<number> => api.post('/ladowiska', data).then(unwrap);
-export const updateLadowisko = (id: number, data: Record<string, unknown>) => api.put(`/ladowiska/${id}`, data);
+export const getLadowiska    = (signal?: AbortSignal): Promise<LadowiskoDto[]> =>
+  api.get('/ladowiska', { signal }).then(unwrap);
+export const getLadowiskoById = (id: number, signal?: AbortSignal): Promise<LadowiskoDto> =>
+  api.get(`/ladowiska/${id}`, { signal }).then(unwrap);
+export const createLadowisko = (data: LadowiskoPayload): Promise<number> =>
+  api.post('/ladowiska', data).then(unwrap);
+export const updateLadowisko = (id: number, data: LadowiskoPayload) =>
+  api.put(`/ladowiska/${id}`, data);
 
 // ── Planowane operacje ────────────────────────────────────────
 
-export const getOperacje = (params: OperacjeQuery = {}): Promise<PagedResult<OperacjaListDto>> =>
-  api.get('/operacje', { params }).then(unwrap);
+export const getOperacje = (params: OperacjeQuery = {}, signal?: AbortSignal): Promise<PagedResult<OperacjaListDto>> =>
+  api.get('/operacje', { params, signal }).then(unwrap);
 
-export const getOperacjaById = (id: number): Promise<OperacjaDto> =>
-  api.get(`/operacje/${id}`).then(unwrap);
+export const getOperacjaById = (id: number, signal?: AbortSignal): Promise<OperacjaDto> =>
+  api.get(`/operacje/${id}`, { signal }).then(unwrap);
 
-export const createOperacja = (data: Record<string, unknown>): Promise<number> =>
+export const createOperacja = (data: OperacjaPayload): Promise<number> =>
   api.post('/operacje', data).then(unwrap);
 
-export const updateOperacja = (id: number, data: Record<string, unknown>) =>
+export const updateOperacja = (id: number, data: OperacjaPayload) =>
   api.put(`/operacje/${id}`, data);
 
 export const zmienStatusOperacji = (id: number, statusId: number, komentarz?: string) =>
   api.post(`/operacje/${id}/status`, { statusId, komentarz });
 
-export const getKomentarzeOperacji = (id: number): Promise<KomentarzDto[]> =>
-  api.get(`/operacje/${id}/komentarze`).then(unwrap);
+export const getKomentarzeOperacji = (id: number, signal?: AbortSignal): Promise<KomentarzDto[]> =>
+  api.get(`/operacje/${id}/komentarze`, { signal }).then(unwrap);
 
 export const dodajKomentarzOperacji = (id: number, tresc: string) =>
   api.post(`/operacje/${id}/komentarze`, { tresc });
 
-export const getHistoriaOperacji = (id: number): Promise<HistoriaZmianyDto[]> =>
-  api.get(`/operacje/${id}/historia`).then(unwrap);
+export const getHistoriaOperacji = (id: number, signal?: AbortSignal): Promise<HistoriaZmianyDto[]> =>
+  api.get(`/operacje/${id}/historia`, { signal }).then(unwrap);
 
 // ── Zlecenia na lot ───────────────────────────────────────────
 
-export const getZlecenia = (params: ZleceniaQuery = {}): Promise<PagedResult<ZlecenieListDto>> =>
-  api.get('/zlecenia', { params }).then(unwrap);
+export const getZlecenia = (params: ZleceniaQuery = {}, signal?: AbortSignal): Promise<PagedResult<ZlecenieListDto>> =>
+  api.get('/zlecenia', { params, signal }).then(unwrap);
 
-export const getZlecenieById = (id: number): Promise<ZlecenieDto> =>
-  api.get(`/zlecenia/${id}`).then(unwrap);
+export const getZlecenieById = (id: number, signal?: AbortSignal): Promise<ZlecenieDto> =>
+  api.get(`/zlecenia/${id}`, { signal }).then(unwrap);
 
-export const createZlecenie = (data: Record<string, unknown>): Promise<number> =>
+export const createZlecenie = (data: ZleceniePayload): Promise<number> =>
   api.post('/zlecenia', data).then(unwrap);
 
-export const updateZlecenie = (id: number, data: Record<string, unknown>) =>
+export const updateZlecenie = (id: number, data: ZleceniePayload) =>
   api.put(`/zlecenia/${id}`, data);
 
 export const zmienStatusZlecenia = (id: number, statusId: number) =>
   api.post(`/zlecenia/${id}/status`, { statusId });
 
-export const getHistoriaZlecenia = (id: number): Promise<HistoriaZmianyDto[]> =>
-  api.get(`/zlecenia/${id}/historia`).then(unwrap);
+export const getHistoriaZlecenia = (id: number, signal?: AbortSignal): Promise<HistoriaZmianyDto[]> =>
+  api.get(`/zlecenia/${id}/historia`, { signal }).then(unwrap);

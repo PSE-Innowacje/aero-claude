@@ -14,14 +14,12 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting — stopniowe zaostrzanie */
+    /* Strict linting */
     "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-
-    /* Pozwól na import .jsx z .tsx (migracja stopniowa) */
-    "allowJs": true,
+    "noUncheckedIndexedAccess": true,
 
     /* Paths */
     "baseUrl": ".",
@@ -29,6 +27,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src", "src/vite-env.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

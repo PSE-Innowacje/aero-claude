@@ -36,6 +36,15 @@ export interface UzytkownikDto {
   aktywny: boolean;
 }
 
+export interface UzytkownikPayload {
+  imie: string;
+  nazwisko: string;
+  email: string;
+  rolaId: number;
+  haslo?: string;
+  aktywny?: boolean;
+}
+
 // ── Słowniki ─────────────────────────────────────────────────
 
 export interface SlownikDto {
@@ -57,6 +66,17 @@ export interface HelikopterDto {
   dataWaznosciPrzegladu?: string;
 }
 
+export interface HelikopterPayload {
+  numerRejestracyjny: string;
+  typ: string;
+  opis?: string;
+  maksLiczbaCzlonkowZalogi: number;
+  maksUdzwigKg: number;
+  zasiegKm: number;
+  status: string;
+  dataWaznosciPrzegladu?: string | null;
+}
+
 // ── Członkowie załogi ────────────────────────────────────────
 
 export interface CzlonekZalogiDto {
@@ -73,10 +93,29 @@ export interface CzlonekZalogiDto {
   aktywny: boolean;
 }
 
+export interface CzlonekZalogiPayload {
+  imie: string;
+  nazwisko: string;
+  email: string;
+  wagaKg: number;
+  rolaId: number;
+  nrLicencjiPilota?: string;
+  dataWaznosciLicencji?: string | null;
+  dataWaznosciSzkolenia: string;
+  aktywny?: boolean;
+}
+
 // ── Lądowiska ────────────────────────────────────────────────
 
 export interface LadowiskoDto {
   id: number;
+  nazwa: string;
+  szerokosc: number;
+  dlugosc: number;
+  opis?: string;
+}
+
+export interface LadowiskoPayload {
   nazwa: string;
   szerokosc: number;
   dlugosc: number;
@@ -98,11 +137,11 @@ export interface OperacjaListDto {
   planowanaDataDo?: string;
   statusId: number;
   statusNazwa: string;
+  kmlZawartosc?: string;
 }
 
 export interface OperacjaDto extends OperacjaListDto {
   kmlNazwaPliku?: string;
-  kmlZawartosc?: string;
   dodatkoweInfo?: string;
   komentarz?: string;
   uwagiPoRealizacji?: string;
@@ -114,6 +153,23 @@ export interface OperacjaDto extends OperacjaListDto {
   osobyKontaktoweIds: number[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface OperacjaPayload {
+  numerZleceniaProjektu: string;
+  opisSkrocony: string;
+  liczbaKmTrasy: number;
+  rodzajeCzynnosciIds: number[];
+  proponowanaDataOd?: string | null;
+  proponowanaDataDo?: string | null;
+  planowanaDataOd?: string | null;
+  planowanaDataDo?: string | null;
+  dodatkoweInfo?: string | null;
+  komentarz?: string | null;
+  kmlNazwaPliku?: string | null;
+  kmlZawartosc?: string | null;
+  punktyTrasy: PunktTrasyDto[];
+  osobyKontaktoweIds: number[];
 }
 
 export interface PunktTrasyDto {
@@ -182,6 +238,20 @@ export interface ZlecenieDto {
   operacje: OperacjaSkrotDto[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ZleceniePayload {
+  planowanyStartDt: string;
+  planowaneLadowanieDt: string;
+  rzeczywistyStartDt?: string | null;
+  rzeczywisteLadowanieDt?: string | null;
+  helikopterId: number;
+  pilotId: number;
+  ladowiskoStartoweId: number;
+  ladowiskoKoncoweId: number;
+  szacowanaDlugoscTrasy: number;
+  czlonkowieZalogiIds: number[];
+  operacjeIds: number[];
 }
 
 // ── Mapa ─────────────────────────────────────────────────────
