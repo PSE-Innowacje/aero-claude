@@ -56,30 +56,30 @@ public class AuthController(IAuthService authService) : ControllerBase
 [Route("api/slowniki")]
 [Authorize]
 [Produces("application/json")]
-public class SlownikiController(IAdministracjaService service) : ControllerBase
+public class SlownikiController(ISlownikService service) : ControllerBase
 {
     [HttpGet("role-uzytkownikow")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> RoleUzytkownikow(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzSlownikAsync(TypSlownika.RoleUzytkownikow, ct));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.RoleUzytkownikow, ct));
 
     [HttpGet("role-zalogi")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> RoleZalogi(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzSlownikAsync(TypSlownika.RoleZalogi, ct));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.RoleZalogi, ct));
 
     [HttpGet("rodzaje-czynnosci")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> RodzajeCzynnosci(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzSlownikAsync(TypSlownika.RodzajeCzynnosci, ct));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.RodzajeCzynnosci, ct));
 
     [HttpGet("statusy-operacji")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> StatusyOperacji(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzSlownikAsync(TypSlownika.StatusyOperacji, ct));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.StatusyOperacji, ct));
 
     [HttpGet("statusy-zlecen")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> StatusyZlecen(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzSlownikAsync(TypSlownika.StatusyZlecen, ct));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.StatusyZlecen, ct));
 }

@@ -12,30 +12,30 @@ namespace LotyApi.Controllers;
 [Route("api/uzytkownicy")]
 [Authorize(Roles = Role.Administrator)]
 [Produces("application/json")]
-public class UzytkownicyController(IAdministracjaService service) : ControllerBase
+public class UzytkownicyController(IUzytkownikService service) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResult<List<UzytkownikDto>>), 200)]
     public async Task<IActionResult> Lista(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzUzytkownikowAsync(ct));
+        this.ToActionResult(await service.PobierzWszystkichAsync(ct));
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResult<UzytkownikDto>), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Szczegoly(int id, CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzUzytkownikaAsync(id, ct));
+        this.ToActionResult(await service.PobierzAsync(id, ct));
 
     [HttpPost]
     [ProducesResponseType(typeof(ApiResult<int>), 201)]
     [ProducesResponseType(409)]
     public async Task<IActionResult> Utworz([FromBody] UtworzUzytkownikaDto dto, CancellationToken ct) =>
-        this.ToCreatedResult(await service.UtworzUzytkownikaAsync(dto, ct), nameof(Szczegoly));
+        this.ToCreatedResult(await service.UtworzAsync(dto, ct), nameof(Szczegoly));
 
     [HttpPut("{id:int}")]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Aktualizuj(int id, [FromBody] AktualizujUzytkownikaDto dto, CancellationToken ct) =>
-        this.ToActionResult(await service.AktualizujUzytkownikaAsync(id, dto, ct));
+        this.ToActionResult(await service.AktualizujAsync(id, dto, ct));
 
     /// <summary>Lista aktywnych użytkowników do wyboru jako osoby kontaktowe – dostępna dla wszystkich zalogowanych.</summary>
     [HttpGet("kontakty")]
@@ -51,31 +51,31 @@ public class UzytkownicyController(IAdministracjaService service) : ControllerBa
 [Route("api/helikoptery")]
 [Authorize]
 [Produces("application/json")]
-public class HelikopteryController(IAdministracjaService service) : ControllerBase
+public class HelikopteryController(IHelikopterService service) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResult<List<HelikopterDto>>), 200)]
     public async Task<IActionResult> Lista(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzHelikopteryAsync(ct));
+        this.ToActionResult(await service.PobierzWszystkieAsync(ct));
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResult<HelikopterDto>), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Szczegoly(int id, CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzHelikopterAsync(id, ct));
+        this.ToActionResult(await service.PobierzAsync(id, ct));
 
     [HttpPost]
     [Authorize(Roles = Role.Administrator)]
     [ProducesResponseType(typeof(ApiResult<int>), 201)]
     public async Task<IActionResult> Utworz([FromBody] UtworzHelikopterDto dto, CancellationToken ct) =>
-        this.ToCreatedResult(await service.UtworzHelikopterAsync(dto, ct), nameof(Szczegoly));
+        this.ToCreatedResult(await service.UtworzAsync(dto, ct), nameof(Szczegoly));
 
     [HttpPut("{id:int}")]
     [Authorize(Roles = Role.Administrator)]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Aktualizuj(int id, [FromBody] AktualizujHelikopterDto dto, CancellationToken ct) =>
-        this.ToActionResult(await service.AktualizujHelikopterAsync(id, dto, ct));
+        this.ToActionResult(await service.AktualizujAsync(id, dto, ct));
 }
 
 // ── Członkowie załogi ────────────────────────────────────────
@@ -84,31 +84,31 @@ public class HelikopteryController(IAdministracjaService service) : ControllerBa
 [Route("api/czlonkowie-zalogi")]
 [Authorize]
 [Produces("application/json")]
-public class CzlonkowieZalogiController(IAdministracjaService service) : ControllerBase
+public class CzlonkowieZalogiController(ICzlonekZalogiService service) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResult<List<CzlonekZalogiDto>>), 200)]
     public async Task<IActionResult> Lista(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzCzlonkowZalogiAsync(ct));
+        this.ToActionResult(await service.PobierzWszystkichAsync(ct));
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResult<CzlonekZalogiDto>), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Szczegoly(int id, CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzCzlonkaZalogiAsync(id, ct));
+        this.ToActionResult(await service.PobierzAsync(id, ct));
 
     [HttpPost]
     [Authorize(Roles = Role.Administrator)]
     [ProducesResponseType(typeof(ApiResult<int>), 201)]
     public async Task<IActionResult> Utworz([FromBody] UtworzCzlonkaZalogiDto dto, CancellationToken ct) =>
-        this.ToCreatedResult(await service.UtworzCzlonkaZalogiAsync(dto, ct), nameof(Szczegoly));
+        this.ToCreatedResult(await service.UtworzAsync(dto, ct), nameof(Szczegoly));
 
     [HttpPut("{id:int}")]
     [Authorize(Roles = Role.Administrator)]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Aktualizuj(int id, [FromBody] AktualizujCzlonkaZalogiDto dto, CancellationToken ct) =>
-        this.ToActionResult(await service.AktualizujCzlonkaZalogiAsync(id, dto, ct));
+        this.ToActionResult(await service.AktualizujAsync(id, dto, ct));
 }
 
 // ── Lądowiska ────────────────────────────────────────────────
@@ -117,29 +117,29 @@ public class CzlonkowieZalogiController(IAdministracjaService service) : Control
 [Route("api/ladowiska")]
 [Authorize]
 [Produces("application/json")]
-public class LadowiskaController(IAdministracjaService service) : ControllerBase
+public class LadowiskaController(ILadowiskoService service) : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(typeof(ApiResult<List<LadowiskoDto>>), 200)]
     public async Task<IActionResult> Lista(CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzLadowiskaAsync(ct));
+        this.ToActionResult(await service.PobierzWszystkieAsync(ct));
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(ApiResult<LadowiskoDto>), 200)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Szczegoly(int id, CancellationToken ct) =>
-        this.ToActionResult(await service.PobierzLadowiskoAsync(id, ct));
+        this.ToActionResult(await service.PobierzAsync(id, ct));
 
     [HttpPost]
     [Authorize(Roles = Role.Administrator)]
     [ProducesResponseType(typeof(ApiResult<int>), 201)]
     public async Task<IActionResult> Utworz([FromBody] UtworzLadowiskoDto dto, CancellationToken ct) =>
-        this.ToCreatedResult(await service.UtworzLadowiskoAsync(dto, ct), nameof(Szczegoly));
+        this.ToCreatedResult(await service.UtworzAsync(dto, ct), nameof(Szczegoly));
 
     [HttpPut("{id:int}")]
     [Authorize(Roles = Role.Administrator)]
     [ProducesResponseType(204)]
     [ProducesResponseType(404)]
     public async Task<IActionResult> Aktualizuj(int id, [FromBody] AktualizujLadowiskoDto dto, CancellationToken ct) =>
-        this.ToActionResult(await service.AktualizujLadowiskoAsync(id, dto, ct));
+        this.ToActionResult(await service.AktualizujAsync(id, dto, ct));
 }

@@ -43,7 +43,11 @@ try
     builder.Services.AddScoped<INumeratorService, NumeratorService>();
     builder.Services.AddScoped<IOperacjaService, OperacjaService>();
     builder.Services.AddScoped<IZlecenieService, ZlecenieService>();
-    builder.Services.AddScoped<IAdministracjaService, AdministracjaService>();
+    builder.Services.AddScoped<IUzytkownikService, UzytkownikService>();
+    builder.Services.AddScoped<IHelikopterService, HelikopterService>();
+    builder.Services.AddScoped<ICzlonekZalogiService, CzlonekZalogiService>();
+    builder.Services.AddScoped<ILadowiskoService, LadowiskoService>();
+    builder.Services.AddScoped<ISlownikService, SlownikService>();
 
     // ── FluentValidation ──────────────────────────────────────
     builder.Services.AddFluentValidationAutoValidation();
@@ -215,39 +219,19 @@ try
         }
     });
 
-    // ── DB Init ───────────────────────────────────────────────
+    // ── DB Init — migracje EF Core ──────────────────────────
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<LotyDbContext>();
-        db.Database.EnsureCreated();
 
-        // Dodaj tabelę refresh_tokens jeśli nie istnieje (istniejąca baza)
-        db.Database.ExecuteSqlRaw("""
-            CREATE TABLE IF NOT EXISTS refresh_tokens (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                token TEXT NOT NULL,
-                uzytkownik_id INTEGER NOT NULL,
-                utworzono_utc TEXT NOT NULL,
-                wygasa_utc TEXT NOT NULL,
-                odwolano_utc TEXT NULL,
-                zastapione_przez TEXT NULL,
-                FOREIGN KEY (uzytkownik_id) REFERENCES uzytkownicy(Id) ON DELETE CASCADE
-            )
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_refresh_token_unique ON refresh_tokens(token)
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON refresh_tokens(uzytkownik_id)
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_operacje_numer_unique ON planowane_operacje(numer)
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_zlecenia_numer_unique ON zlecenia_na_lot(numer)
-            """);
+        // Zastosuj wszystkie oczekujące migracje.
+        // Przy pierwszym uruchomieniu na istniejącej bazie wykonaj:
+        //   dotnet ef migrations add InitialCreate
+        //   dotnet ef database update
+        // Schemat zarządzany wyłącznie przez migracje — nie używamy EnsureCreated ani raw SQL.
+        db.Database.Migrate();
 
-        Log.Information("Baza danych: {Source}",
+        Log.Information("Baza danych: {Source} (migracje zastosowane)",
             db.Database.GetConnectionString());
     }
 
