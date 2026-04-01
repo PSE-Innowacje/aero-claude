@@ -172,6 +172,8 @@ public class ZlecenieService(
             return ServiceResult.Fail(ServiceErrorKind.Forbidden,
                 $"Brak uprawnień do edycji zlecenia w statusie {z.StatusId} dla roli '{user.Rola}'.");
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
         var helikopter = await db.Helikoptery.FindAsync([dto.HelikopterId], ct);
         var pilot = await db.CzlonkowieZalogi.FindAsync([z.PilotId], ct);
         if (helikopter is null || pilot is null)
@@ -211,6 +213,7 @@ public class ZlecenieService(
                 { ZlecenieId = id, OperacjaId = oId });
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return ServiceResult.Ok();
     }
 

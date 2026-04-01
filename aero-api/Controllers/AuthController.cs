@@ -43,10 +43,12 @@ public class AuthController(IAuthService authService) : ControllerBase
     /// <summary>Wylogowanie — odwołuje refresh token.</summary>
     [HttpPost("logout")]
     [Authorize]
+    [EnableRateLimiting("login")]
     [ProducesResponseType(204)]
     public async Task<IActionResult> Logout([FromBody] LogoutDto dto, CancellationToken ct)
     {
-        await authService.RevokeAsync(dto.RefreshToken, ct);
+        var userId = this.GetCurrentUser().Id;
+        await authService.RevokeAsync(dto.RefreshToken, userId, ct);
         return NoContent();
     }
 }

@@ -157,6 +157,8 @@ public class OperacjaService(
             return ServiceResult.Fail(ServiceErrorKind.Forbidden,
                 "Brak uprawnień do edycji operacji w tym statusie.");
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
         // Pola wspólne
         o.NumerZleceniaProjektu = dto.NumerZleceniaProjektu;
         o.OpisSkrocony = dto.OpisSkrocony;
@@ -198,6 +200,7 @@ public class OperacjaService(
                 { OperacjaId = id, UzytkownikId = uid });
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         return ServiceResult.Ok();
     }
 
@@ -221,12 +224,15 @@ public class OperacjaService(
             return ServiceResult.Fail(ServiceErrorKind.Validation,
                 "Wymagane planowane daty przed potwierdzeniem.");
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
         DodajHistorie(id, "status", stary.ToString(), dto.StatusId.ToString(), user.Id);
         o.StatusId = dto.StatusId;
         if (dto.Komentarz is not null) o.Komentarz = dto.Komentarz;
         o.UpdatedAt = DateTime.UtcNow;
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         logger.LogInformation("Status operacji {Id} zmieniony {Stary}→{Nowy}",
             id, stary, dto.StatusId);

@@ -15,7 +15,7 @@ public interface IAuthService
 {
     Task<LoginResponseDto?> LoginAsync(LoginDto dto, CancellationToken ct = default);
     Task<LoginResponseDto?> RefreshAsync(string refreshToken, CancellationToken ct = default);
-    Task RevokeAsync(string refreshToken, CancellationToken ct = default);
+    Task RevokeAsync(string refreshToken, int userId, CancellationToken ct = default);
 
     /// <summary>Centralne hashowanie hasła — jeden workFactor w całej aplikacji.</summary>
     string HashPassword(string plainText);
@@ -95,12 +95,12 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
         return new LoginResponseDto(accessToken, plainToken, userDto);
     }
 
-    public async Task RevokeAsync(string refreshToken, CancellationToken ct)
+    public async Task RevokeAsync(string refreshToken, int userId, CancellationToken ct)
     {
         var tokenHash = HashToken(refreshToken);
 
         var stored = await db.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == tokenHash, ct);
+            .FirstOrDefaultAsync(rt => rt.Token == tokenHash && rt.UzytkownikId == userId, ct);
 
         if (stored is not null && stored.JestAktywny)
         {
