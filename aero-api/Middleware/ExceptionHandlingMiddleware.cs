@@ -32,11 +32,11 @@ public class ExceptionHandlingMiddleware(RequestDelegate next, ILogger<Exception
     {
         var (statusCode, message) = exception switch
         {
-            ArgumentException     => (HttpStatusCode.BadRequest,          exception.Message),
-            UnauthorizedAccessException => (HttpStatusCode.Forbidden,     "Brak dostępu."),
-            KeyNotFoundException  => (HttpStatusCode.NotFound,            "Zasób nie istnieje."),
-            InvalidOperationException => (HttpStatusCode.UnprocessableEntity, exception.Message),
-            _                     => (HttpStatusCode.InternalServerError, "Wystąpił błąd serwera.")
+            ArgumentException     => (HttpStatusCode.BadRequest,            "Nieprawidłowe dane wejściowe."),
+            UnauthorizedAccessException => (HttpStatusCode.Forbidden,       "Brak dostępu."),
+            KeyNotFoundException  => (HttpStatusCode.NotFound,              "Zasób nie istnieje."),
+            InvalidOperationException => (HttpStatusCode.UnprocessableEntity, "Operacja nie może być wykonana."),
+            _                     => (HttpStatusCode.InternalServerError,   "Wystąpił błąd serwera.")
         };
 
         context.Response.ContentType = "application/json";

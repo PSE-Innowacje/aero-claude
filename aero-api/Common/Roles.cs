@@ -17,6 +17,14 @@ public static class Role
 }
 
 /// <summary>
+/// Stałe ID ról załogi — eliminuje magic numbers w walidatorach.
+/// </summary>
+public static class RolaZalogi
+{
+    public const int Pilot = 1;
+}
+
+/// <summary>
 /// Stałe statusów operacji — eliminuje magic numbers.
 /// </summary>
 public static class StatusOperacji

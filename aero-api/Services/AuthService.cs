@@ -6,15 +6,16 @@ using LotyApi.Data;
 using LotyApi.DTOs;
 using LotyApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.IdentityModel.Tokens;
 
 namespace LotyApi.Services;
 
 public interface IAuthService
 {
-    Task<LoginResponseDto?> LoginAsync(LoginDto dto);
-    Task<LoginResponseDto?> RefreshAsync(string refreshToken);
-    Task RevokeAsync(string refreshToken);
+    Task<LoginResponseDto?> LoginAsync(LoginDto dto, CancellationToken ct = default);
+    Task<LoginResponseDto?> RefreshAsync(string refreshToken, CancellationToken ct = default);
+    Task RevokeAsync(string refreshToken, int userId, CancellationToken ct = default);
 
     /// <summary>Centralne hashowanie hasła — jeden workFactor w całej aplikacji.</summary>
     string HashPassword(string plainText);
@@ -33,30 +34,32 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
     public bool VerifyPassword(string plainText, string hash) =>
         BCrypt.Net.BCrypt.Verify(plainText, hash);
 
-    public async Task<LoginResponseDto?> LoginAsync(LoginDto dto)
+    public async Task<LoginResponseDto?> LoginAsync(LoginDto dto, CancellationToken ct)
     {
         var user = await db.Uzytkownicy
             .Include(u => u.Rola)
-            .FirstOrDefaultAsync(u => u.Email == dto.Email && u.Aktywny);
+            .FirstOrDefaultAsync(u => u.Email == dto.Email && u.Aktywny, ct);
 
         if (user is null || !VerifyPassword(dto.Haslo, user.HasloHash))
             return null;
 
         var accessToken = GenerujAccessToken(user);
-        var refreshToken = await GenerujRefreshTokenAsync(user.Id);
+        var (plainToken, _) = await GenerujRefreshTokenAsync(user.Id, ct);
 
         var userDto = new UzytkownikDto(
             user.Id, user.Imie, user.Nazwisko, user.Email,
             user.RolaId, user.Rola.Nazwa, user.Aktywny);
 
-        return new LoginResponseDto(accessToken, refreshToken, userDto);
+        return new LoginResponseDto(accessToken, plainToken, userDto);
     }
 
-    public async Task<LoginResponseDto?> RefreshAsync(string refreshToken)
+    public async Task<LoginResponseDto?> RefreshAsync(string refreshToken, CancellationToken ct)
     {
+        var tokenHash = HashToken(refreshToken);
+
         var stored = await db.RefreshTokens
             .Include(rt => rt.Uzytkownik).ThenInclude(u => u.Rola)
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == tokenHash, ct);
 
         if (stored is null || !stored.JestAktywny)
         {
@@ -66,7 +69,7 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
                 logger.LogWarning(
                     "Próba ponownego użycia refresh tokena użytkownika {UserId} — odwołuję wszystkie tokeny",
                     stored.UzytkownikId);
-                await OdwolajWszystkieTokenyAsync(stored.UzytkownikId);
+                await OdwolajWszystkieTokenyAsync(stored.UzytkownikId, ct);
             }
             return null;
         }
@@ -74,29 +77,35 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
         var user = stored.Uzytkownik;
         if (!user.Aktywny) return null;
 
-        // Rotacja: odwołaj stary, wygeneruj nowy
-        var newRefreshToken = await GenerujRefreshTokenAsync(user.Id);
+        // Rotacja w transakcji: odwołaj stary + wygeneruj nowy atomowo
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        var (plainToken, newTokenHash) = await GenerujRefreshTokenAsync(user.Id, ct);
         stored.OdwolanoUtc = DateTime.UtcNow;
-        stored.ZastapionePrzez = newRefreshToken;
-        await db.SaveChangesAsync();
+        stored.ZastapionePrzez = newTokenHash;
+        await db.SaveChangesAsync(ct);
+
+        await tx.CommitAsync(ct);
 
         var accessToken = GenerujAccessToken(user);
         var userDto = new UzytkownikDto(
             user.Id, user.Imie, user.Nazwisko, user.Email,
             user.RolaId, user.Rola.Nazwa, user.Aktywny);
 
-        return new LoginResponseDto(accessToken, newRefreshToken, userDto);
+        return new LoginResponseDto(accessToken, plainToken, userDto);
     }
 
-    public async Task RevokeAsync(string refreshToken)
+    public async Task RevokeAsync(string refreshToken, int userId, CancellationToken ct)
     {
+        var tokenHash = HashToken(refreshToken);
+
         var stored = await db.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == tokenHash && rt.UzytkownikId == userId, ct);
 
         if (stored is not null && stored.JestAktywny)
         {
             stored.OdwolanoUtc = DateTime.UtcNow;
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
         }
     }
 
@@ -132,30 +141,38 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private async Task<string> GenerujRefreshTokenAsync(int userId)
+    private async Task<(string Plain, string Hash)> GenerujRefreshTokenAsync(int userId, CancellationToken ct)
     {
-        var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var plainToken = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+        var tokenHash = HashToken(plainToken);
         var days = config.GetValue("Jwt:RefreshTokenDays", 7);
 
         db.RefreshTokens.Add(new RefreshToken
         {
-            Token = token,
+            Token = tokenHash,
             UzytkownikId = userId,
             WygasaUtc = DateTime.UtcNow.AddDays(days)
         });
-        await db.SaveChangesAsync();
-        return token;
+        await db.SaveChangesAsync(ct);
+        return (plainToken, tokenHash);
     }
 
-    private async Task OdwolajWszystkieTokenyAsync(int userId)
+    /// <summary>SHA-256 hash tokena — w bazie przechowujemy hash, klientowi zwracamy plain-text.</summary>
+    private static string HashToken(string token)
+    {
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(bytes);
+    }
+
+    private async Task OdwolajWszystkieTokenyAsync(int userId, CancellationToken ct)
     {
         var aktywne = await db.RefreshTokens
             .Where(rt => rt.UzytkownikId == userId && rt.OdwolanoUtc == null)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         foreach (var rt in aktywne)
             rt.OdwolanoUtc = DateTime.UtcNow;
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
     }
 }
