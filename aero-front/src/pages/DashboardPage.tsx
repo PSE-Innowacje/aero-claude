@@ -111,7 +111,7 @@ export default function DashboardPage() {
                   <div style={{ fontSize: 42, fontWeight: 800, color: '#fff', lineHeight: 1 }}>{counts[card.key]}</div>
                   <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: 14, marginTop: 4 }}>{card.label}</div>
                 </div>
-                <div style={{ width: 56, height: 56, borderRadius: 14, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: 56, height: 56, borderRadius: radii.lg, background: 'rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   {card.icon}
                 </div>
               </div>

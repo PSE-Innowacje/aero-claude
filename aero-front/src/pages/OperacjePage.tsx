@@ -183,12 +183,12 @@ export default function OperacjePage() {
       />
 
       <Card style={{ borderRadius: radii.xl }} styles={{ body: { padding: 0 } }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A3A' }}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${palette.borderLight}` }}>
           <Row gutter={[12, 12]} align="middle">
             <Col xs={24} sm={10}>
               <Input
                 placeholder="Szukaj po numerze zlecenia…"
-                prefix={<SearchOutlined style={{ color: '#7A7A95' }} />}
+                prefix={<SearchOutlined style={{ color: palette.textMuted }} />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 allowClear

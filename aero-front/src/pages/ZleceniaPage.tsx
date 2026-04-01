@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Space, Card, Input, Select, Tooltip, message, Row, Col } from 'antd';
 import { PlusOutlined, EditOutlined, EyeOutlined, SearchOutlined, RocketOutlined } from '@ant-design/icons';
@@ -8,6 +8,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { StatusZleceniaTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { palette, radii } from '../theme';
 
 const { Option } = Select;
 
@@ -22,20 +23,24 @@ export default function ZleceniaPage() {
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ZleceniaQuery>({ strona: 1, rozmiarStrony: 20 });
   const [search,  setSearch]  = useState('');
+  const abortRef = useRef<AbortController | null>(null);
 
   const loadZlecenia = useCallback(async (f: ZleceniaQuery) => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
     try {
-      const result = await getZlecenia(f);
-      setData(result ?? { items: [], lacznaLiczba: 0 });
+      const result = await getZlecenia(f, controller.signal);
+      if (!controller.signal.aborted) setData(result ?? { items: [], lacznaLiczba: 0, strona: 1, rozmiarStrony: 20, lacznaLiczbaStron: 0, maPoprzednia: false, maNastepna: false });
     } catch (err) {
-      message.error(extractApiError(err, 'Nie udało się pobrać zleceń.'));
+      if (!controller.signal.aborted) message.error(extractApiError(err, 'Nie udało się pobrać zleceń.'));
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadZlecenia(filters); }, [filters]);
+  useEffect(() => { loadZlecenia(filters); return () => abortRef.current?.abort(); }, [filters, loadZlecenia]);
   useEffect(() => { getStatusyZlecen().then(setStatusy).catch(() => message.warning('Nie udało się załadować statusów.')); }, []);
 
   const filtered = (data.items ?? []).filter(z =>
@@ -95,20 +100,20 @@ export default function ZleceniaPage() {
         subtitle={`${data.lacznaLiczba} rekordów`}
         extra={canCreate && (
           <Button type="primary" icon={<PlusOutlined />} size="large"
-            style={{ borderRadius: 10, fontWeight: 600 }}
+            style={{ borderRadius: radii.md, fontWeight: 600 }}
             onClick={() => navigate('/zlecenia/new')}>
             Nowe zlecenie
           </Button>
         )}
       />
 
-      <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 0 } }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A3A' }}>
+      <Card style={{ borderRadius: radii.xl }} styles={{ body: { padding: 0 } }}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${palette.borderLight}` }}>
           <Row gutter={[12, 12]} align="middle">
             <Col xs={24} sm={10}>
               <Input
                 placeholder="Szukaj po numerze lub pilocie…"
-                prefix={<SearchOutlined style={{ color: '#7A7A95' }} />}
+                prefix={<SearchOutlined style={{ color: palette.textMuted }} />}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 allowClear

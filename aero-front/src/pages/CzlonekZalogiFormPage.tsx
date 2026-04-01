@@ -38,15 +38,17 @@ export default function CzlonekZalogiFormPage() {
 
   useEffect(() => {
     if (!isEdit) return;
+    const controller = new AbortController();
     setInitLoad(true);
-    getCzlonekById(Number(id)).then(data => {
+    getCzlonekById(Number(id), controller.signal).then(data => {
       form.setFieldsValue({
         ...data,
         dataWaznosciLicencji: data.dataWaznosciLicencji ? dayjs(data.dataWaznosciLicencji) : null,
         dataWaznosciSzkolenia: data.dataWaznosciSzkolenia ? dayjs(data.dataWaznosciSzkolenia) : null,
       });
       setRolaNazwa(data.rolaNazwa);
-    }).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
+    }).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => { if (!controller.signal.aborted) setInitLoad(false); });
+    return () => controller.abort();
   }, [id, form, isEdit]);
 
   const onFinish = async (values: CzlonekFormValues) => {

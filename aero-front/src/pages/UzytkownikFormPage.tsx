@@ -31,9 +31,11 @@ export default function UzytkownikFormPage() {
 
   useEffect(() => {
     if (!isEdit) return;
+    const controller = new AbortController();
     setInitLoad(true);
-    getUzytkownikById(Number(id)).then(data => form.setFieldsValue(data))
-      .catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
+    getUzytkownikById(Number(id), controller.signal).then(data => form.setFieldsValue(data))
+      .catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => { if (!controller.signal.aborted) setInitLoad(false); });
+    return () => controller.abort();
   }, [id, form, isEdit]);
 
   const onFinish = async (values: UzytkownikFormValues) => {

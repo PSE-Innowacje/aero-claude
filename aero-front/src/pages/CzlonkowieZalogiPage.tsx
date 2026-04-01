@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Table, Button, Tooltip, Tag, Card, Input, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
@@ -13,10 +13,14 @@ export default function CzlonkowieZalogiPage() {
   const [lista,   setLista]   = useState<CzlonekZalogiDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [search,  setSearch]  = useState('');
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+    abortRef.current = controller;
     setLoading(true);
-    getCzlonkowie().then(setLista).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setLoading(false));
+    getCzlonkowie(controller.signal).then(setLista).catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => controller.abort();
   }, []);
 
   const filtered = lista.filter(c =>

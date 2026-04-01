@@ -24,9 +24,11 @@ export default function LadowiskoFormPage() {
 
   useEffect(() => {
     if (!isEdit) return;
+    const controller = new AbortController();
     setInitLoad(true);
-    getLadowiskoById(Number(id)).then(data => form.setFieldsValue(data))
-      .catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => setInitLoad(false));
+    getLadowiskoById(Number(id), controller.signal).then(data => form.setFieldsValue(data))
+      .catch(err => message.error(extractApiError(err, 'Błąd ładowania.'))).finally(() => { if (!controller.signal.aborted) setInitLoad(false); });
+    return () => controller.abort();
   }, [id, form, isEdit]);
 
   const onFinish = async (values: LadowiskoFormValues) => {

@@ -66,7 +66,7 @@ export default function LoginPage() {
               ]}
             >
               <Input
-                prefix={<UserOutlined style={{ color: '#7A7A95' }} />}
+                prefix={<UserOutlined style={{ color: palette.textMuted }} />}
                 placeholder="adres@firma.pl"
                 size="large"
                 autoComplete="email"
@@ -79,7 +79,7 @@ export default function LoginPage() {
               rules={[{ required: true, message: 'Hasło jest wymagane.' }]}
             >
               <Input.Password
-                prefix={<LockOutlined style={{ color: '#7A7A95' }} />}
+                prefix={<LockOutlined style={{ color: palette.textMuted }} />}
                 placeholder="••••••••"
                 size="large"
                 autoComplete="current-password"
