@@ -15,7 +15,6 @@ obj/
 *.db
 *.db-shm
 *.db-wal
-*.sqbpro
 
 ## Logs
 logs/

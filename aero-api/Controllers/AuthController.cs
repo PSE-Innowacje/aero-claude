@@ -18,9 +18,9 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(typeof(ApiResult<LoginResponseDto>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(429)]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    public async Task<IActionResult> Login([FromBody] LoginDto dto, CancellationToken ct)
     {
-        var result = await authService.LoginAsync(dto);
+        var result = await authService.LoginAsync(dto, ct);
         if (result is null)
             return Unauthorized(ApiResult.Fail("Nieprawidłowy email lub hasło."));
         return Ok(ApiResult<LoginResponseDto>.Ok(result));
@@ -31,9 +31,9 @@ public class AuthController(IAuthService authService) : ControllerBase
     [EnableRateLimiting("login")]
     [ProducesResponseType(typeof(ApiResult<LoginResponseDto>), 200)]
     [ProducesResponseType(401)]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto dto)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto dto, CancellationToken ct)
     {
-        var result = await authService.RefreshAsync(dto.RefreshToken);
+        var result = await authService.RefreshAsync(dto.RefreshToken, ct);
         if (result is null)
             return Unauthorized(ApiResult.Fail("Refresh token jest nieprawidłowy lub wygasł."));
         return Ok(ApiResult<LoginResponseDto>.Ok(result));
@@ -43,9 +43,9 @@ public class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("logout")]
     [Authorize]
     [ProducesResponseType(204)]
-    public async Task<IActionResult> Logout([FromBody] LogoutDto dto)
+    public async Task<IActionResult> Logout([FromBody] LogoutDto dto, CancellationToken ct)
     {
-        await authService.RevokeAsync(dto.RefreshToken);
+        await authService.RevokeAsync(dto.RefreshToken, ct);
         return NoContent();
     }
 }

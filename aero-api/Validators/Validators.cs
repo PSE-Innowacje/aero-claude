@@ -1,4 +1,5 @@
 using FluentValidation;
+using LotyApi.Common;
 using LotyApi.DTOs;
 
 namespace LotyApi.Validators;
@@ -176,11 +177,11 @@ public class UtworzCzlonkaZalogiValidator : AbstractValidator<UtworzCzlonkaZalog
         RuleFor(x => x.NrLicencjiPilota)
             .NotEmpty().WithMessage("Numer licencji pilota jest wymagany.")
             .MaximumLength(30)
-            .When(x => x.RolaId == 1);
+            .When(x => x.RolaId == RolaZalogi.Pilot);
 
         RuleFor(x => x.DataWaznosciLicencji)
             .NotNull().WithMessage("Data ważności licencji jest wymagana dla pilota.")
-            .When(x => x.RolaId == 1);
+            .When(x => x.RolaId == RolaZalogi.Pilot);
 
         RuleFor(x => x.DataWaznosciSzkolenia)
             .NotEmpty().WithMessage("Data ważności szkolenia jest wymagana.");
@@ -210,11 +211,11 @@ public class AktualizujCzlonkaZalogiValidator : AbstractValidator<AktualizujCzlo
         RuleFor(x => x.NrLicencjiPilota)
             .NotEmpty().WithMessage("Numer licencji pilota jest wymagany.")
             .MaximumLength(30)
-            .When(x => x.RolaId == 1);
+            .When(x => x.RolaId == RolaZalogi.Pilot);
 
         RuleFor(x => x.DataWaznosciLicencji)
             .NotNull().WithMessage("Data ważności licencji jest wymagana dla pilota.")
-            .When(x => x.RolaId == 1);
+            .When(x => x.RolaId == RolaZalogi.Pilot);
 
         RuleFor(x => x.DataWaznosciSzkolenia)
             .NotEmpty().WithMessage("Data ważności szkolenia jest wymagana.");

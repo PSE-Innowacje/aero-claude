@@ -3,7 +3,6 @@ using LotyApi.Data;
 using LotyApi.DTOs;
 using LotyApi.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace LotyApi.Services;
 
@@ -87,79 +86,72 @@ public class ZlecenieService(
         UtworzZlecenieDto dto, CurrentUser user, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        try
+
+        // Pilot — na podstawie emaila zalogowanego użytkownika
+        var pilot = await db.CzlonkowieZalogi
+            .Include(c => c.Rola)
+            .FirstOrDefaultAsync(c => c.Email == user.Email && c.Aktywny, ct);
+
+        if (pilot is null)
+            return ServiceResult<int>.Fail(ServiceErrorKind.Validation,
+                "Bieżący użytkownik nie jest aktywnym członkiem załogi.");
+
+        var helikopter = await db.Helikoptery.FindAsync([dto.HelikopterId], ct);
+        if (helikopter is null)
+            return ServiceResult<int>.Fail(ServiceErrorKind.Validation,
+                "Nie znaleziono helikoptera.");
+
+        var czlonkowie = await db.CzlonkowieZalogi
+            .Where(c => dto.CzlonkowieZalogiIds.Contains(c.Id)).ToListAsync(ct);
+
+        var bledy = WalidujZlecenie(dto, pilot, helikopter, czlonkowie);
+        if (bledy.Count > 0)
+            return ServiceResult<int>.Fail(ServiceErrorKind.Validation, bledy);
+
+        var wagaZalogi = pilot.WagaKg + czlonkowie.Sum(c => c.WagaKg);
+        var numer = await numerator.NastepnyNumerZleceniaAsync(ct);
+
+        var zlecenie = new ZlecenieNaLot
         {
-            // Pilot — na podstawie emaila zalogowanego użytkownika
-            var pilot = await db.CzlonkowieZalogi
-                .Include(c => c.Rola)
-                .FirstOrDefaultAsync(c => c.Email == user.Email && c.Aktywny, ct);
+            Numer = numer,
+            PlanowanyStartDt = dto.PlanowanyStartDt,
+            PlanowaneLadowanieDt = dto.PlanowaneLadowanieDt,
+            PilotId = pilot.Id,
+            HelikopterId = dto.HelikopterId,
+            LadowiskoStartoweId = dto.LadowiskoStartoweId,
+            LadowiskoKoncoweId = dto.LadowiskoKoncoweId,
+            SzacowanaDlugoscTrasy = dto.SzacowanaDlugoscTrasy,
+            WagaZalogiKg = wagaZalogi,
+            StatusId = StatusZlecenia.Wprowadzone,
+            TworzacyId = user.Id
+        };
 
-            if (pilot is null)
-                return ServiceResult<int>.Fail(ServiceErrorKind.Validation,
-                    "Bieżący użytkownik nie jest aktywnym członkiem załogi.");
+        foreach (var cId in dto.CzlonkowieZalogiIds)
+            zlecenie.CzlonkowieZalogi.Add(new ZlecienieCzlonekZalogi { CzlonekId = cId });
+        foreach (var oId in dto.OperacjeIds)
+            zlecenie.ZlecenieOperacje.Add(new ZlecenieOperacja { OperacjaId = oId });
 
-            var helikopter = await db.Helikoptery.FindAsync([dto.HelikopterId], ct);
-            if (helikopter is null)
-                return ServiceResult<int>.Fail(ServiceErrorKind.Validation,
-                    "Nie znaleziono helikoptera.");
+        db.ZleceniaNaLot.Add(zlecenie);
 
-            var czlonkowie = await db.CzlonkowieZalogi
-                .Where(c => dto.CzlonkowieZalogiIds.Contains(c.Id)).ToListAsync(ct);
+        // Kaskadowo: operacje Potwierdzone → Zaplanowane
+        var operacje = await db.PlanowaneOperacje
+            .Where(o => dto.OperacjeIds.Contains(o.Id)).ToListAsync(ct);
 
-            var bledy = WalidujZlecenie(dto, pilot, helikopter, czlonkowie);
-            if (bledy.Count > 0)
-                return ServiceResult<int>.Fail(ServiceErrorKind.Validation, bledy);
-
-            var wagaZalogi = pilot.WagaKg + czlonkowie.Sum(c => c.WagaKg);
-            var numer = await numerator.NastepnyNumerZleceniaAsync();
-
-            var zlecenie = new ZlecenieNaLot
-            {
-                Numer = numer,
-                PlanowanyStartDt = dto.PlanowanyStartDt,
-                PlanowaneLadowanieDt = dto.PlanowaneLadowanieDt,
-                PilotId = pilot.Id,
-                HelikopterId = dto.HelikopterId,
-                LadowiskoStartoweId = dto.LadowiskoStartoweId,
-                LadowiskoKoncoweId = dto.LadowiskoKoncoweId,
-                SzacowanaDlugoscTrasy = dto.SzacowanaDlugoscTrasy,
-                WagaZalogiKg = wagaZalogi,
-                StatusId = StatusZlecenia.Wprowadzone,
-                TworzacyId = user.Id
-            };
-
-            foreach (var cId in dto.CzlonkowieZalogiIds)
-                zlecenie.CzlonkowieZalogi.Add(new ZlecienieCzlonekZalogi { CzlonekId = cId });
-            foreach (var oId in dto.OperacjeIds)
-                zlecenie.ZlecenieOperacje.Add(new ZlecenieOperacja { OperacjaId = oId });
-
-            db.ZleceniaNaLot.Add(zlecenie);
-
-            // Kaskadowo: operacje Potwierdzone → Zaplanowane
-            var operacje = await db.PlanowaneOperacje
-                .Where(o => dto.OperacjeIds.Contains(o.Id)).ToListAsync(ct);
-
-            foreach (var op in operacje.Where(o => o.StatusId == StatusOperacji.PotwierdzoneDoPlan))
-            {
-                DodajHistorieOperacji(op.Id, "status",
-                    StatusOperacji.PotwierdzoneDoPlan.ToString(),
-                    StatusOperacji.ZaplanowaneDoZlecenia.ToString(), user.Id);
-                op.StatusId = StatusOperacji.ZaplanowaneDoZlecenia;
-            }
-
-            await db.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
-
-            logger.LogInformation("Utworzono zlecenie {Numer} przez pilota {UserId}",
-                numer, user.Id);
-
-            return ServiceResult<int>.Ok(zlecenie.Id);
-        }
-        catch
+        foreach (var op in operacje.Where(o => o.StatusId == StatusOperacji.PotwierdzoneDoPlan))
         {
-            await transaction.RollbackAsync(ct);
-            throw;
+            DodajHistorieOperacji(op.Id, "status",
+                StatusOperacji.PotwierdzoneDoPlan.ToString(),
+                StatusOperacji.ZaplanowaneDoZlecenia.ToString(), user.Id);
+            op.StatusId = StatusOperacji.ZaplanowaneDoZlecenia;
         }
+
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        logger.LogInformation("Utworzono zlecenie {Numer} przez pilota {UserId}",
+            numer, user.Id);
+
+        return ServiceResult<int>.Ok(zlecenie.Id);
     }
 
     // ── Aktualizacja ──────────────────────────────────────────
@@ -175,6 +167,11 @@ public class ZlecenieService(
         if (z is null)
             return ServiceResult.Fail(ServiceErrorKind.NotFound, $"Zlecenie {id} nie istnieje.");
 
+        // ── Punkt 4: Kontrola statusu — czy edycja jest dozwolona ──
+        if (!StatusMachine.CzyEdycjaZleceniaDozwolona(user.Rola, z.StatusId))
+            return ServiceResult.Fail(ServiceErrorKind.Forbidden,
+                $"Brak uprawnień do edycji zlecenia w statusie {z.StatusId} dla roli '{user.Rola}'.");
+
         var helikopter = await db.Helikoptery.FindAsync([dto.HelikopterId], ct);
         var pilot = await db.CzlonkowieZalogi.FindAsync([z.PilotId], ct);
         if (helikopter is null || pilot is null)
@@ -183,6 +180,14 @@ public class ZlecenieService(
 
         var czlonkowie = await db.CzlonkowieZalogi
             .Where(c => dto.CzlonkowieZalogiIds.Contains(c.Id)).ToListAsync(ct);
+
+        // ── Punkt 3: Walidacja biznesowa (identyczna jak przy tworzeniu) ──
+        var bledy = WalidujZlecenieWspolne(
+            dto.PlanowanyStartDt, dto.SzacowanaDlugoscTrasy,
+            pilot, helikopter, czlonkowie);
+
+        if (bledy.Count > 0)
+            return ServiceResult.Fail(ServiceErrorKind.Validation, bledy);
 
         z.PlanowanyStartDt = dto.PlanowanyStartDt;
         z.PlanowaneLadowanieDt = dto.PlanowaneLadowanieDt;
@@ -215,63 +220,56 @@ public class ZlecenieService(
         int id, ZmienStatusZlecenieDto dto, CurrentUser user, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        try
+
+        var z = await db.ZleceniaNaLot
+            .Include(x => x.ZlecenieOperacje)
+            .FirstOrDefaultAsync(x => x.Id == id, ct);
+
+        if (z is null)
+            return ServiceResult.Fail(ServiceErrorKind.NotFound,
+                $"Zlecenie {id} nie istnieje.");
+
+        var stary = z.StatusId;
+
+        if (!StatusMachine.CzyPrzejscieZleceniaDozwolone(user.Rola, stary, dto.StatusId))
+            return ServiceResult.Fail(ServiceErrorKind.Validation,
+                $"Niedozwolona zmiana statusu z {stary} na {dto.StatusId} dla roli '{user.Rola}'.");
+
+        if (dto.StatusId is StatusZlecenia.ZrealizowaneWCzesci or StatusZlecenia.ZrealizowaneWCalosci
+            && (z.RzeczywistyStartDt is null || z.RzeczywisteLadowanieDt is null))
+            return ServiceResult.Fail(ServiceErrorKind.Validation,
+                "Wymagane rzeczywiste czasy startu i lądowania.");
+
+        DodajHistorieZlecenia(id, "status",
+            stary.ToString(), dto.StatusId.ToString(), user.Id);
+        z.StatusId = dto.StatusId;
+        z.UpdatedAt = DateTime.UtcNow;
+
+        // Kaskadowe zmiany statusów operacji
+        var operacjeIds = z.ZlecenieOperacje.Select(zo => zo.OperacjaId).ToList();
+        var operacje = await db.PlanowaneOperacje
+            .Where(o => operacjeIds.Contains(o.Id)).ToListAsync(ct);
+
+        foreach (var op in operacje)
         {
-            var z = await db.ZleceniaNaLot
-                .Include(x => x.ZlecenieOperacje)
-                .FirstOrDefaultAsync(x => x.Id == id, ct);
+            var nowyStatusOp = StatusMachine.DocelowyStatusOperacjiPrzyZmianieZlecenia(
+                dto.StatusId, op.StatusId);
 
-            if (z is null)
-                return ServiceResult.Fail(ServiceErrorKind.NotFound,
-                    $"Zlecenie {id} nie istnieje.");
-
-            var stary = z.StatusId;
-
-            if (!StatusMachine.CzyPrzejscieZleceniaDozwolone(user.Rola, stary, dto.StatusId))
-                return ServiceResult.Fail(ServiceErrorKind.Validation,
-                    $"Niedozwolona zmiana statusu z {stary} na {dto.StatusId} dla roli '{user.Rola}'.");
-
-            if (dto.StatusId is StatusZlecenia.ZrealizowaneWCzesci or StatusZlecenia.ZrealizowaneWCalosci
-                && (z.RzeczywistyStartDt is null || z.RzeczywisteLadowanieDt is null))
-                return ServiceResult.Fail(ServiceErrorKind.Validation,
-                    "Wymagane rzeczywiste czasy startu i lądowania.");
-
-            DodajHistorieZlecenia(id, "status",
-                stary.ToString(), dto.StatusId.ToString(), user.Id);
-            z.StatusId = dto.StatusId;
-            z.UpdatedAt = DateTime.UtcNow;
-
-            // Kaskadowe zmiany statusów operacji
-            var operacjeIds = z.ZlecenieOperacje.Select(zo => zo.OperacjaId).ToList();
-            var operacje = await db.PlanowaneOperacje
-                .Where(o => operacjeIds.Contains(o.Id)).ToListAsync(ct);
-
-            foreach (var op in operacje)
+            if (nowyStatusOp.HasValue)
             {
-                var nowyStatusOp = StatusMachine.DocelowyStatusOperacjiPrzyZmianieZlecenia(
-                    dto.StatusId, op.StatusId);
-
-                if (nowyStatusOp.HasValue)
-                {
-                    DodajHistorieOperacji(op.Id, "status",
-                        op.StatusId.ToString(), nowyStatusOp.Value.ToString(), user.Id);
-                    op.StatusId = nowyStatusOp.Value;
-                }
+                DodajHistorieOperacji(op.Id, "status",
+                    op.StatusId.ToString(), nowyStatusOp.Value.ToString(), user.Id);
+                op.StatusId = nowyStatusOp.Value;
             }
-
-            await db.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
-
-            logger.LogInformation("Status zlecenia {Id} zmieniony {Stary}→{Nowy}",
-                id, stary, dto.StatusId);
-
-            return ServiceResult.Ok();
         }
-        catch
-        {
-            await transaction.RollbackAsync(ct);
-            throw;
-        }
+
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        logger.LogInformation("Status zlecenia {Id} zmieniony {Stary}→{Nowy}",
+            id, stary, dto.StatusId);
+
+        return ServiceResult.Ok();
     }
 
     // ── Historia ──────────────────────────────────────────────
@@ -297,9 +295,22 @@ public class ZlecenieService(
     private static List<string> WalidujZlecenie(
         UtworzZlecenieDto dto, CzlonekZalogi pilot,
         Helikopter helikopter, List<CzlonekZalogi> czlonkowie)
+        => WalidujZlecenieWspolne(
+            dto.PlanowanyStartDt, dto.SzacowanaDlugoscTrasy,
+            pilot, helikopter, czlonkowie);
+
+    /// <summary>
+    /// Wspólna walidacja biznesowa dla tworzenia i aktualizacji zlecenia.
+    /// Sprawdza ważność przeglądu helikoptera, licencji i szkoleń załogi,
+    /// udźwig helikoptera oraz zasięg trasy.
+    /// </summary>
+    private static List<string> WalidujZlecenieWspolne(
+        DateTime planowanyStartDt, int szacowanaDlugoscTrasy,
+        CzlonekZalogi pilot, Helikopter helikopter,
+        List<CzlonekZalogi> czlonkowie)
     {
         var bledy = new List<string>();
-        var dataLotu = DateOnly.FromDateTime(dto.PlanowanyStartDt);
+        var dataLotu = DateOnly.FromDateTime(planowanyStartDt);
 
         if (helikopter.DataWaznosciPrzegladu < dataLotu)
             bledy.Add($"Helikopter {helikopter.NumerRejestracyjny}: nieważny przegląd " +
@@ -322,8 +333,8 @@ public class ZlecenieService(
             bledy.Add($"Waga załogi ({wagaZalogi} kg) przekracza udźwig helikoptera " +
                       $"({helikopter.MaksUdzwigKg} kg).");
 
-        if (dto.SzacowanaDlugoscTrasy > helikopter.ZasiegKm)
-            bledy.Add($"Trasa ({dto.SzacowanaDlugoscTrasy} km) przekracza zasięg helikoptera " +
+        if (szacowanaDlugoscTrasy > helikopter.ZasiegKm)
+            bledy.Add($"Trasa ({szacowanaDlugoscTrasy} km) przekracza zasięg helikoptera " +
                       $"({helikopter.ZasiegKm} km).");
 
         return bledy;

@@ -3,7 +3,6 @@ using LotyApi.Data;
 using LotyApi.DTOs;
 using LotyApi.Models;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace LotyApi.Services;
 
@@ -36,6 +35,7 @@ public interface IOperacjaService
 public class OperacjaService(
     LotyDbContext db,
     INumeratorService numerator,
+    IUzytkownikService uzytkownikService,
     ILogger<OperacjaService> logger) : IOperacjaService
 {
     // ── Lista ─────────────────────────────────────────────────
@@ -98,52 +98,45 @@ public class OperacjaService(
         UtworzOperacjeDto dto, CurrentUser user, CancellationToken ct)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-        try
+
+        var numer = await numerator.NastepnyNumerOperacjiAsync(ct);
+
+        var operacja = new PlanowanaOperacja
         {
-            var numer = await numerator.NastepnyNumerOperacjiAsync();
+            Numer = numer,
+            NumerZleceniaProjektu = dto.NumerZleceniaProjektu,
+            OpisSkrocony = dto.OpisSkrocony,
+            KmlNazwaPliku = dto.KmlNazwaPliku,
+            KmlZawartosc = dto.KmlZawartosc,
+            LiczbaKmTrasy = dto.LiczbaKmTrasy,
+            ProponowanaDataOd = dto.ProponowanaDataOd,
+            ProponowanaDataDo = dto.ProponowanaDataDo,
+            DodatkoweInfo = dto.DodatkoweInfo,
+            StatusId = StatusOperacji.Wprowadzone,
+            WprowadzajacyId = user.Id
+        };
 
-            var operacja = new PlanowanaOperacja
-            {
-                Numer = numer,
-                NumerZleceniaProjektu = dto.NumerZleceniaProjektu,
-                OpisSkrocony = dto.OpisSkrocony,
-                KmlNazwaPliku = dto.KmlNazwaPliku,
-                KmlZawartosc = dto.KmlZawartosc,
-                LiczbaKmTrasy = dto.LiczbaKmTrasy,
-                ProponowanaDataOd = dto.ProponowanaDataOd,
-                ProponowanaDataDo = dto.ProponowanaDataDo,
-                DodatkoweInfo = dto.DodatkoweInfo,
-                StatusId = StatusOperacji.Wprowadzone,
-                WprowadzajacyId = user.Id
-            };
+        foreach (var rcId in dto.RodzajeCzynnosciIds)
+            operacja.RodzajeCzynnosci.Add(new OperacjaRodzajCzynnosci { RodzajCzynnosciId = rcId });
+        foreach (var p in dto.PunktyTrasy)
+            operacja.PunktyTrasy.Add(new OperacjaPunktTrasy
+                { Kolejnosc = p.Kolejnosc, Szerokosc = p.Szerokosc, Dlugosc = p.Dlugosc });
+        foreach (var uid in dto.OsobyKontaktoweIds)
+            operacja.OsobyKontaktowe.Add(new OperacjaOsobaKontaktowa { UzytkownikId = uid });
 
-            foreach (var rcId in dto.RodzajeCzynnosciIds)
-                operacja.RodzajeCzynnosci.Add(new OperacjaRodzajCzynnosci { RodzajCzynnosciId = rcId });
-            foreach (var p in dto.PunktyTrasy)
-                operacja.PunktyTrasy.Add(new OperacjaPunktTrasy
-                    { Kolejnosc = p.Kolejnosc, Szerokosc = p.Szerokosc, Dlugosc = p.Dlugosc });
-            foreach (var uid in dto.OsobyKontaktoweIds)
-                operacja.OsobyKontaktowe.Add(new OperacjaOsobaKontaktowa { UzytkownikId = uid });
+        db.PlanowaneOperacje.Add(operacja);
+        await db.SaveChangesAsync(ct);
 
-            db.PlanowaneOperacje.Add(operacja);
-            await db.SaveChangesAsync(ct);
+        DodajHistorie(operacja.Id, "status",
+            null, StatusOperacji.Wprowadzone.ToString(), user.Id);
+        await db.SaveChangesAsync(ct);
 
-            DodajHistorie(operacja.Id, "status",
-                null, StatusOperacji.Wprowadzone.ToString(), user.Id);
-            await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
-            await transaction.CommitAsync(ct);
+        logger.LogInformation("Utworzono operację {Numer} przez użytkownika {UserId}",
+            numer, user.Id);
 
-            logger.LogInformation("Utworzono operację {Numer} przez użytkownika {UserId}",
-                numer, user.Id);
-
-            return ServiceResult<int>.Ok(operacja.Id);
-        }
-        catch
-        {
-            await transaction.RollbackAsync(ct);
-            throw;
-        }
+        return ServiceResult<int>.Ok(operacja.Id);
     }
 
     // ── Aktualizacja ──────────────────────────────────────────
@@ -295,21 +288,9 @@ public class OperacjaService(
 
     // ── Osoby kontaktowe ──────────────────────────────────────
 
-    public async Task<ServiceResult<List<UzytkownikDto>>> PobierzOsobyKontaktoweAsync(
-        CancellationToken ct)
-    {
-        var lista = await db.Uzytkownicy
-            .Include(u => u.Rola)
-            .AsNoTracking()
-            .Where(u => u.Aktywny)
-            .OrderBy(u => u.Nazwisko).ThenBy(u => u.Imie)
-            .Select(u => new UzytkownikDto(
-                u.Id, u.Imie, u.Nazwisko, u.Email,
-                u.RolaId, u.Rola.Nazwa, u.Aktywny))
-            .ToListAsync(ct);
-
-        return ServiceResult<List<UzytkownikDto>>.Ok(lista);
-    }
+    public Task<ServiceResult<List<UzytkownikDto>>> PobierzOsobyKontaktoweAsync(
+        CancellationToken ct) =>
+        uzytkownikService.PobierzKontaktyAsync(ct);
 
     // ── Helpery prywatne ──────────────────────────────────────
 

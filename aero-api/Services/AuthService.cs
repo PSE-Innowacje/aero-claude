@@ -12,9 +12,9 @@ namespace LotyApi.Services;
 
 public interface IAuthService
 {
-    Task<LoginResponseDto?> LoginAsync(LoginDto dto);
-    Task<LoginResponseDto?> RefreshAsync(string refreshToken);
-    Task RevokeAsync(string refreshToken);
+    Task<LoginResponseDto?> LoginAsync(LoginDto dto, CancellationToken ct = default);
+    Task<LoginResponseDto?> RefreshAsync(string refreshToken, CancellationToken ct = default);
+    Task RevokeAsync(string refreshToken, CancellationToken ct = default);
 
     /// <summary>Centralne hashowanie hasła — jeden workFactor w całej aplikacji.</summary>
     string HashPassword(string plainText);
@@ -33,30 +33,30 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
     public bool VerifyPassword(string plainText, string hash) =>
         BCrypt.Net.BCrypt.Verify(plainText, hash);
 
-    public async Task<LoginResponseDto?> LoginAsync(LoginDto dto)
+    public async Task<LoginResponseDto?> LoginAsync(LoginDto dto, CancellationToken ct)
     {
         var user = await db.Uzytkownicy
             .Include(u => u.Rola)
-            .FirstOrDefaultAsync(u => u.Email == dto.Email && u.Aktywny);
+            .FirstOrDefaultAsync(u => u.Email == dto.Email && u.Aktywny, ct);
 
         if (user is null || !VerifyPassword(dto.Haslo, user.HasloHash))
             return null;
 
         var accessToken = GenerujAccessToken(user);
-        var refreshToken = await GenerujRefreshTokenAsync(user.Id);
+        var newRefreshToken = await GenerujRefreshTokenAsync(user.Id, ct);
 
         var userDto = new UzytkownikDto(
             user.Id, user.Imie, user.Nazwisko, user.Email,
             user.RolaId, user.Rola.Nazwa, user.Aktywny);
 
-        return new LoginResponseDto(accessToken, refreshToken, userDto);
+        return new LoginResponseDto(accessToken, newRefreshToken, userDto);
     }
 
-    public async Task<LoginResponseDto?> RefreshAsync(string refreshToken)
+    public async Task<LoginResponseDto?> RefreshAsync(string refreshToken, CancellationToken ct)
     {
         var stored = await db.RefreshTokens
             .Include(rt => rt.Uzytkownik).ThenInclude(u => u.Rola)
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken, ct);
 
         if (stored is null || !stored.JestAktywny)
         {
@@ -66,7 +66,7 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
                 logger.LogWarning(
                     "Próba ponownego użycia refresh tokena użytkownika {UserId} — odwołuję wszystkie tokeny",
                     stored.UzytkownikId);
-                await OdwolajWszystkieTokenyAsync(stored.UzytkownikId);
+                await OdwolajWszystkieTokenyAsync(stored.UzytkownikId, ct);
             }
             return null;
         }
@@ -75,10 +75,10 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
         if (!user.Aktywny) return null;
 
         // Rotacja: odwołaj stary, wygeneruj nowy
-        var newRefreshToken = await GenerujRefreshTokenAsync(user.Id);
+        var newRefreshToken = await GenerujRefreshTokenAsync(user.Id, ct);
         stored.OdwolanoUtc = DateTime.UtcNow;
         stored.ZastapionePrzez = newRefreshToken;
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
 
         var accessToken = GenerujAccessToken(user);
         var userDto = new UzytkownikDto(
@@ -88,15 +88,15 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
         return new LoginResponseDto(accessToken, newRefreshToken, userDto);
     }
 
-    public async Task RevokeAsync(string refreshToken)
+    public async Task RevokeAsync(string refreshToken, CancellationToken ct)
     {
         var stored = await db.RefreshTokens
-            .FirstOrDefaultAsync(rt => rt.Token == refreshToken);
+            .FirstOrDefaultAsync(rt => rt.Token == refreshToken, ct);
 
         if (stored is not null && stored.JestAktywny)
         {
             stored.OdwolanoUtc = DateTime.UtcNow;
-            await db.SaveChangesAsync();
+            await db.SaveChangesAsync(ct);
         }
     }
 
@@ -132,7 +132,7 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private async Task<string> GenerujRefreshTokenAsync(int userId)
+    private async Task<string> GenerujRefreshTokenAsync(int userId, CancellationToken ct)
     {
         var token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
         var days = config.GetValue("Jwt:RefreshTokenDays", 7);
@@ -143,19 +143,19 @@ public class AuthService(LotyDbContext db, IConfiguration config, ILogger<AuthSe
             UzytkownikId = userId,
             WygasaUtc = DateTime.UtcNow.AddDays(days)
         });
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
         return token;
     }
 
-    private async Task OdwolajWszystkieTokenyAsync(int userId)
+    private async Task OdwolajWszystkieTokenyAsync(int userId, CancellationToken ct)
     {
         var aktywne = await db.RefreshTokens
             .Where(rt => rt.UzytkownikId == userId && rt.OdwolanoUtc == null)
-            .ToListAsync();
+            .ToListAsync(ct);
 
         foreach (var rt in aktywne)
             rt.OdwolanoUtc = DateTime.UtcNow;
 
-        await db.SaveChangesAsync();
+        await db.SaveChangesAsync(ct);
     }
 }

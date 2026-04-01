@@ -66,6 +66,22 @@ public static class StatusMachine
         (Role.OsobaNadzorujaca, StatusZlecenia.PrzekazaneDoAkceptacji, StatusZlecenia.Zaakceptowane),
     ];
 
+    /// <summary>Statusy, w których Pilot może edytować zlecenie.</summary>
+    private static readonly HashSet<int> EdycjaZleceniaDozwolonaPilot =
+    [
+        StatusZlecenia.Wprowadzone,
+        StatusZlecenia.Odrzucone,
+        StatusZlecenia.Zaakceptowane,
+    ];
+
+    /// <summary>Statusy, w których Osoba nadzorująca może edytować zlecenie.</summary>
+    private static readonly HashSet<int> EdycjaZleceniaDozwolonaNadzorujaca =
+    [
+        StatusZlecenia.Wprowadzone,
+        StatusZlecenia.PrzekazaneDoAkceptacji,
+        StatusZlecenia.Zaakceptowane,
+    ];
+
     /// <summary>
     /// Sprawdza czy zmiana statusu zlecenia jest dozwolona dla danej roli.
     /// Administrator może wykonać dowolne przejście.
@@ -74,6 +90,18 @@ public static class StatusMachine
     {
         if (rola == Role.Administrator) return true;
         return DozwolonePrzejsciaZlecen.Contains((rola, zStatusu, naStatus));
+    }
+
+    /// <summary>
+    /// Sprawdza czy użytkownik o danej roli może edytować zlecenie w podanym statusie.
+    /// Zlecenia zrealizowane / niezrealizowane nie podlegają edycji.
+    /// </summary>
+    public static bool CzyEdycjaZleceniaDozwolona(string rola, int statusId)
+    {
+        if (rola == Role.Administrator) return true;
+        if (rola == Role.Pilot) return EdycjaZleceniaDozwolonaPilot.Contains(statusId);
+        if (rola == Role.OsobaNadzorujaca) return EdycjaZleceniaDozwolonaNadzorujaca.Contains(statusId);
+        return false;
     }
 
     // ── Kaskadowe zmiany statusów operacji przy zmianie statusu zlecenia ──

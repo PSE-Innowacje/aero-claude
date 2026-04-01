@@ -231,8 +231,45 @@ try
         // Schemat zarządzany wyłącznie przez migracje — nie używamy EnsureCreated ani raw SQL.
         db.Database.Migrate();
 
-        Log.Information("Baza danych: {Source} (migracje zastosowane)",
-            db.Database.GetConnectionString());
+        // Tabela licznikowa — tworzona bezpiecznie niezależnie od stanu migracji.
+        // CREATE TABLE IF NOT EXISTS jest idempotentne — nie nadpisze istniejącej tabeli.
+        db.Database.ExecuteSqlRaw("""
+            CREATE TABLE IF NOT EXISTS numeratory (
+                prefix TEXT NOT NULL,
+                rok    INTEGER NOT NULL,
+                ostatnia_wartosc INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (prefix, rok)
+            );
+            """);
+
+        // Synchronizacja numeratorów z istniejącymi danymi w tabelach docelowych.
+        // Zapobiega kolizji UNIQUE gdy numerator startuje od 0, a tabela ma już rekordy.
+        db.Database.ExecuteSqlRaw("""
+            INSERT INTO numeratory (prefix, rok, ostatnia_wartosc)
+            SELECT 'OP', CAST(SUBSTR(numer, 4, 4) AS INTEGER),
+                   MAX(CAST(SUBSTR(numer, 9) AS INTEGER))
+            FROM planowane_operacje
+            WHERE numer LIKE 'OP-____-%'
+            GROUP BY SUBSTR(numer, 4, 4)
+            ON CONFLICT(prefix, rok) DO UPDATE
+                SET ostatnia_wartosc = MAX(ostatnia_wartosc, excluded.ostatnia_wartosc);
+            """);
+
+        db.Database.ExecuteSqlRaw("""
+            INSERT INTO numeratory (prefix, rok, ostatnia_wartosc)
+            SELECT 'ZL', CAST(SUBSTR(numer, 4, 4) AS INTEGER),
+                   MAX(CAST(SUBSTR(numer, 9) AS INTEGER))
+            FROM zlecenia_na_lot
+            WHERE numer LIKE 'ZL-____-%'
+            GROUP BY SUBSTR(numer, 4, 4)
+            ON CONFLICT(prefix, rok) DO UPDATE
+                SET ostatnia_wartosc = MAX(ostatnia_wartosc, excluded.ostatnia_wartosc);
+            """);
+
+        var connStr = db.Database.GetConnectionString() ?? "";
+        var maskedConnStr = System.Text.RegularExpressions.Regex.Replace(
+            connStr, @"(?i)(password|pwd)\s*=\s*[^;]*", "$1=***");
+        Log.Information("Baza danych: {Source} (migracje zastosowane)", maskedConnStr);
     }
 
     Log.Information("Aplikacja uruchomiona w trybie {Env}", app.Environment.EnvironmentName);

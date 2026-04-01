@@ -64,6 +64,10 @@ public class UzytkownikService(LotyDbContext db, IAuthService authService) : IUz
         if (u is null)
             return ServiceResult.Fail(ServiceErrorKind.NotFound, $"Użytkownik {id} nie istnieje.");
 
+        if (u.Email != dto.Email && await db.Uzytkownicy.AnyAsync(x => x.Email == dto.Email && x.Id != id, ct))
+            return ServiceResult.Fail(ServiceErrorKind.Conflict,
+                $"Użytkownik z emailem '{dto.Email}' już istnieje.");
+
         u.Imie = dto.Imie;
         u.Nazwisko = dto.Nazwisko;
         u.Email = dto.Email;
