@@ -18,8 +18,22 @@ import type { HelikopterDto, CzlonekZalogiDto, LadowiskoDto, OperacjaListDto, Zl
 const { Option } = Select;
 const { Text } = Typography;
 
+interface ZlecenieFormValues {
+  planowanyStartDt: dayjs.Dayjs;
+  planowaneLadowanieDt: dayjs.Dayjs;
+  rzeczywistyStartDt: dayjs.Dayjs | null;
+  rzeczywisteLadowanieDt: dayjs.Dayjs | null;
+  helikopterId: number;
+  pilotId: number;
+  ladowiskoStartoweId: number;
+  ladowiskoKoncoweId: number;
+  szacowanaDlugoscTrasy: number;
+  czlonkowieZalogiIds: number[];
+  operacjeIds: number[];
+}
+
 export default function ZlecenieFormPage() {
-  const [form]  = Form.useForm();
+  const [form]  = Form.useForm<ZlecenieFormValues>();
   const navigate = useNavigate();
   const { id }  = useParams<{ id: string }>();
   const isEdit  = Boolean(id);
@@ -71,21 +85,21 @@ export default function ZlecenieFormPage() {
     return () => controller.abort();
   }, [id, isEdit, form]);
 
-  const onFinish = async (values: Record<string, unknown>) => {
+  const onFinish = async (values: ZlecenieFormValues) => {
     setLoading(true);
     setApiErrors([]);
     const payload: ZleceniePayload = {
-      planowanyStartDt:       (values.planowanyStartDt as dayjs.Dayjs)?.toISOString(),
-      planowaneLadowanieDt:   (values.planowaneLadowanieDt as dayjs.Dayjs)?.toISOString(),
-      rzeczywistyStartDt:     (values.rzeczywistyStartDt as dayjs.Dayjs | null)?.toISOString() ?? null,
-      rzeczywisteLadowanieDt: (values.rzeczywisteLadowanieDt as dayjs.Dayjs | null)?.toISOString() ?? null,
-      helikopterId:           values.helikopterId as number,
-      pilotId:                values.pilotId as number,
-      ladowiskoStartoweId:    values.ladowiskoStartoweId as number,
-      ladowiskoKoncoweId:     values.ladowiskoKoncoweId as number,
-      szacowanaDlugoscTrasy:  values.szacowanaDlugoscTrasy as number,
-      czlonkowieZalogiIds:    (values.czlonkowieZalogiIds as number[]) ?? [],
-      operacjeIds:            (values.operacjeIds as number[]) ?? [],
+      planowanyStartDt:       values.planowanyStartDt?.toISOString(),
+      planowaneLadowanieDt:   values.planowaneLadowanieDt?.toISOString(),
+      rzeczywistyStartDt:     values.rzeczywistyStartDt?.toISOString() ?? null,
+      rzeczywisteLadowanieDt: values.rzeczywisteLadowanieDt?.toISOString() ?? null,
+      helikopterId:           values.helikopterId,
+      pilotId:                values.pilotId,
+      ladowiskoStartoweId:    values.ladowiskoStartoweId,
+      ladowiskoKoncoweId:     values.ladowiskoKoncoweId,
+      szacowanaDlugoscTrasy:  values.szacowanaDlugoscTrasy,
+      czlonkowieZalogiIds:    values.czlonkowieZalogiIds ?? [],
+      operacjeIds:            values.operacjeIds ?? [],
     };
     try {
       if (isEdit) {

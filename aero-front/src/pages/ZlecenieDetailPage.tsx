@@ -10,6 +10,7 @@ import {
   MinusCircleOutlined,
 } from '@ant-design/icons';
 import { getZlecenieById, zmienStatusZlecenia, getHistoriaZlecenia, extractApiError } from '../services/api';
+import type { ZlecenieDto, HistoriaZmianyDto } from '../types/api';
 import { StatusZleceniaTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -44,10 +45,11 @@ export default function ZlecenieDetailPage() {
   const navigate = useNavigate();
   const { rola, hasRole } = useAuth();
 
-  const [zlecenie, setZlecenie] = useState(null);
-  const [historia, setHistoria] = useState([]);
+  const [zlecenie, setZlecenie] = useState<ZlecenieDto | null>(null);
+  const [historia, setHistoria] = useState<HistoriaZmianyDto[]>([]);
   const [loading,  setLoading]  = useState(true);
-  const [modal,    setModal]    = useState({ open: false, action: null });
+  interface StatusAction { fromStatus: number; toStatus: number; label: string; danger?: boolean; type?: string; icon: React.ReactNode; }
+const [modal,    setModal]    = useState<{ open: boolean; action: StatusAction | null }>({ open: false, action: null });
   const [saving,   setSaving]   = useState(false);
 
   const canEdit = hasRole('Pilot', 'Osoba nadzorująca', 'Administrator');

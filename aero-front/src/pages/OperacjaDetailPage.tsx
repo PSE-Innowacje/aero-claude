@@ -13,6 +13,7 @@ import {
   getKomentarzeOperacji, dodajKomentarzOperacji, getHistoriaOperacji,
   extractApiError,
 } from '../services/api';
+import type { OperacjaDto, KomentarzDto, HistoriaZmianyDto } from '../types/api';
 import { StatusOperacjiTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
@@ -40,13 +41,14 @@ export default function OperacjaDetailPage() {
   const navigate  = useNavigate();
   const { rola, hasRole } = useAuth();
 
-  const [operacja,   setOperacja]   = useState(null);
-  const [komentarze, setKomentarze] = useState([]);
-  const [historia,   setHistoria]   = useState([]);
+  const [operacja,   setOperacja]   = useState<OperacjaDto | null>(null);
+  const [komentarze, setKomentarze] = useState<KomentarzDto[]>([]);
+  const [historia,   setHistoria]   = useState<HistoriaZmianyDto[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [newComment, setNewComment] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
-  const [statusModal, setStatusModal] = useState({ open: false, action: null });
+  interface StatusAction { fromStatus: number; toStatus: number; label: string; danger?: boolean; type?: string; icon: React.ReactNode; }
+const [statusModal, setStatusModal] = useState<{ open: boolean; action: StatusAction | null }>({ open: false, action: null });
   const [komentarzDoStatusu, setKomentarzDoStatusu] = useState('');
 
   const canEdit = hasRole('Osoba planująca', 'Osoba nadzorująca', 'Administrator');

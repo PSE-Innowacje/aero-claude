@@ -23,8 +23,22 @@ interface KmlFile {
   zawartosc: string | null;
 }
 
+interface OperacjaFormValues {
+  numerZleceniaProjektu: string;
+  opisSkrocony: string;
+  liczbaKmTrasy: number;
+  rodzajeCzynnosciIds: number[];
+  proponowanaDataOd: dayjs.Dayjs | null;
+  proponowanaDataDo: dayjs.Dayjs | null;
+  planowanaDataOd: dayjs.Dayjs | null;
+  planowanaDataDo: dayjs.Dayjs | null;
+  dodatkoweInfo?: string;
+  komentarz?: string;
+  osobyKontaktoweIds: number[];
+}
+
 export default function OperacjaFormPage() {
-  const [form]  = Form.useForm();
+  const [form]  = Form.useForm<OperacjaFormValues>();
   const navigate = useNavigate();
   const { id }  = useParams<{ id: string }>();
   const isEdit  = Boolean(id);
@@ -108,21 +122,21 @@ export default function OperacjaFormPage() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const onFinish = async (values: Record<string, unknown>) => {
+  const onFinish = async (values: OperacjaFormValues) => {
     setLoading(true);
     const payload: OperacjaPayload = {
-      numerZleceniaProjektu: values.numerZleceniaProjektu as string,
-      opisSkrocony:          values.opisSkrocony as string,
-      liczbaKmTrasy:         Math.round((values.liczbaKmTrasy as number) ?? 0),
-      rodzajeCzynnosciIds:   (values.rodzajeCzynnosciIds as number[]) ?? [],
-      proponowanaDataOd:     (values.proponowanaDataOd as dayjs.Dayjs | null)?.format('YYYY-MM-DD') ?? null,
-      proponowanaDataDo:     (values.proponowanaDataDo as dayjs.Dayjs | null)?.format('YYYY-MM-DD') ?? null,
-      planowanaDataOd:       (values.planowanaDataOd as dayjs.Dayjs | null)?.format('YYYY-MM-DD') ?? null,
-      planowanaDataDo:       (values.planowanaDataDo as dayjs.Dayjs | null)?.format('YYYY-MM-DD') ?? null,
-      dodatkoweInfo:         (values.dodatkoweInfo as string) ?? null,
-      komentarz:             (values.komentarz as string) ?? null,
+      numerZleceniaProjektu: values.numerZleceniaProjektu,
+      opisSkrocony:          values.opisSkrocony,
+      liczbaKmTrasy:         Math.round(values.liczbaKmTrasy ?? 0),
+      rodzajeCzynnosciIds:   values.rodzajeCzynnosciIds ?? [],
+      proponowanaDataOd:     values.proponowanaDataOd?.format('YYYY-MM-DD') ?? null,
+      proponowanaDataDo:     values.proponowanaDataDo?.format('YYYY-MM-DD') ?? null,
+      planowanaDataOd:       values.planowanaDataOd?.format('YYYY-MM-DD') ?? null,
+      planowanaDataDo:       values.planowanaDataDo?.format('YYYY-MM-DD') ?? null,
+      dodatkoweInfo:         values.dodatkoweInfo ?? null,
+      komentarz:             values.komentarz ?? null,
       punktyTrasy:           [],
-      osobyKontaktoweIds:    (values.osobyKontaktoweIds as number[]) ?? [],
+      osobyKontaktoweIds:    values.osobyKontaktoweIds ?? [],
       kmlNazwaPliku:         kmlPlik?.nazwa ?? null,
       kmlZawartosc:          kmlPlik?.zawartosc ?? null,
     };

@@ -10,8 +10,19 @@ import type { HelikopterPayload } from '../types/api';
 
 const { Option } = Select;
 
+interface HelikopterFormValues {
+  numerRejestracyjny: string;
+  typ: string;
+  opis?: string;
+  maksLiczbaCzlonkowZalogi: number;
+  maksUdzwigKg: number;
+  zasiegKm: number;
+  status: string;
+  dataWaznosciPrzegladu: dayjs.Dayjs | null;
+}
+
 export default function HelikopterFormPage() {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<HelikopterFormValues>();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isEdit = Boolean(id);
@@ -36,17 +47,17 @@ export default function HelikopterFormPage() {
     return () => controller.abort();
   }, [id, form, isEdit]);
 
-  const onFinish = async (values: Record<string, unknown>) => {
+  const onFinish = async (values: HelikopterFormValues) => {
     setLoading(true);
     const payload: HelikopterPayload = {
-      numerRejestracyjny: values.numerRejestracyjny as string,
-      typ: values.typ as string,
-      opis: (values.opis as string) || undefined,
-      maksLiczbaCzlonkowZalogi: values.maksLiczbaCzlonkowZalogi as number,
-      maksUdzwigKg: values.maksUdzwigKg as number,
-      zasiegKm: values.zasiegKm as number,
-      status: values.status as string,
-      dataWaznosciPrzegladu: (values.dataWaznosciPrzegladu as dayjs.Dayjs | null)?.format('YYYY-MM-DD') ?? null,
+      numerRejestracyjny: values.numerRejestracyjny,
+      typ: values.typ,
+      opis: values.opis || undefined,
+      maksLiczbaCzlonkowZalogi: values.maksLiczbaCzlonkowZalogi,
+      maksUdzwigKg: values.maksUdzwigKg,
+      zasiegKm: values.zasiegKm,
+      status: values.status,
+      dataWaznosciPrzegladu: values.dataWaznosciPrzegladu?.format('YYYY-MM-DD') ?? null,
     };
     try {
       isEdit ? await updateHelikopter(Number(id), payload) : await createHelikopter(payload);
@@ -61,12 +72,9 @@ export default function HelikopterFormPage() {
 
   return (
     <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <PageHeader
-        icon={<SendOutlined style={{ color: '#fff', fontSize: 20 }} />}
+      <PageHeader icon={<SendOutlined style={{ color: '#fff', fontSize: 20 }} />}
         gradient="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
-        title={isEdit ? 'Edytuj helikopter' : 'Nowy helikopter'}
-        backTo="/helikoptery"
-      />
+        title={isEdit ? 'Edytuj helikopter' : 'Nowy helikopter'} backTo="/helikoptery" />
       <Card style={{ borderRadius: radii.xxl }} styles={{ body: { padding: 32 } }}>
         {initLoad ? <Skeleton active paragraph={{ rows: 7 }} /> : (
           <Form form={form} layout="vertical" onFinish={onFinish} requiredMark="optional">
@@ -76,9 +84,7 @@ export default function HelikopterFormPage() {
             <Form.Item label="Typ" name="typ" rules={[{ required: true }]}>
               <Input placeholder="np. Airbus H125" size="large" />
             </Form.Item>
-            <Form.Item label="Opis" name="opis">
-              <Input placeholder="Opcjonalny opis" />
-            </Form.Item>
+            <Form.Item label="Opis" name="opis"><Input placeholder="Opcjonalny opis" /></Form.Item>
             <Form.Item label="Maks. liczba członków załogi" name="maksLiczbaCzlonkowZalogi" rules={[{ required: true }]}>
               <InputNumber min={1} max={10} style={{ width: '100%' }} size="large" />
             </Form.Item>
@@ -89,19 +95,14 @@ export default function HelikopterFormPage() {
               <InputNumber min={1} max={1000} style={{ width: '100%' }} size="large" addonAfter="km" />
             </Form.Item>
             <Form.Item label="Status" name="status" rules={[{ required: true }]} initialValue="aktywny">
-              <Select size="large">
-                <Option value="aktywny">Aktywny</Option>
-                <Option value="nieaktywny">Nieaktywny</Option>
-              </Select>
+              <Select size="large"><Option value="aktywny">Aktywny</Option><Option value="nieaktywny">Nieaktywny</Option></Select>
             </Form.Item>
             <Form.Item label="Data ważności przeglądu" name="dataWaznosciPrzegladu">
               <DatePicker format="YYYY-MM-DD" style={{ width: '100%' }} size="large" />
             </Form.Item>
             <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
               <Button type="primary" htmlType="submit" icon={<SaveOutlined />} loading={loading}
-                size="large" style={{ flex: 1, height: 48, fontWeight: 600 }}>
-                {isEdit ? 'Zapisz' : 'Dodaj'}
-              </Button>
+                size="large" style={{ flex: 1, height: 48, fontWeight: 600 }}>{isEdit ? 'Zapisz' : 'Dodaj'}</Button>
               <Button size="large" onClick={() => navigate('/helikoptery')} style={{ height: 48 }}>Anuluj</Button>
             </div>
           </Form>

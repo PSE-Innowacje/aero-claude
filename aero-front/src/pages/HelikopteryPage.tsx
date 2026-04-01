@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Table, Button, Space, Tooltip, Tag, Card, Input, message } from 'antd';
+import { Table, Button, Tooltip, Tag, Card, Input, message } from 'antd';
+import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, EditOutlined, SearchOutlined, SendOutlined } from '@ant-design/icons';
 import { getHelikoptery, extractApiError } from '../services/api';
 import PageHeader from '../components/PageHeader';
+import { radii, palette } from '../theme';
+import type { HelikopterDto } from '../types/api';
 
 export default function HelikopteryPage() {
   const navigate = useNavigate();
-  const [helikoptery, setHelikoptery] = useState([]);
+  const [helikoptery, setHelikoptery] = useState<HelikopterDto[]>([]);
   const [loading,     setLoading]     = useState(false);
   const [search,      setSearch]      = useState('');
 
@@ -21,17 +24,16 @@ export default function HelikopteryPage() {
     h.typ?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const columns = [
-    { title: 'Nr rejestracyjny', dataIndex: 'numerRejestracyjny', render: v => <b>{v}</b> },
+  const columns: ColumnsType<HelikopterDto> = [
+    { title: 'Nr rejestracyjny', dataIndex: 'numerRejestracyjny', render: (v: string) => <b>{v}</b> },
     { title: 'Typ', dataIndex: 'typ' },
-    { title: 'Zasięg', dataIndex: 'zasiegKm', render: v => `${v} km` },
-    { title: 'Udźwig', dataIndex: 'maksUdzwigKg', render: v => `${v} kg` },
+    { title: 'Zasięg', dataIndex: 'zasiegKm', render: (v: number) => `${v} km` },
+    { title: 'Udźwig', dataIndex: 'maksUdzwigKg', render: (v: number) => `${v} kg` },
     { title: 'Maks. załoga', dataIndex: 'maksLiczbaCzlonkowZalogi' },
-    { title: 'Przegląd do', dataIndex: 'dataWaznosciPrzegladu', render: v => v ?? '—' },
+    { title: 'Przegląd do', dataIndex: 'dataWaznosciPrzegladu', render: (v?: string) => v ?? '—' },
     {
-      title: 'Status',
-      dataIndex: 'status',
-      render: v => <Tag color={v === 'aktywny' ? 'green' : 'default'}>{v}</Tag>,
+      title: 'Status', dataIndex: 'status',
+      render: (v: string) => <Tag color={v === 'aktywny' ? 'green' : 'default'}>{v}</Tag>,
     },
     {
       title: 'Akcje', key: 'actions', width: 80,
@@ -53,14 +55,14 @@ export default function HelikopteryPage() {
         subtitle={`${helikoptery.length} rekordów`}
         extra={
           <Button type="primary" icon={<PlusOutlined />} size="large"
-            style={{ borderRadius: 10, fontWeight: 600 }} onClick={() => navigate('/helikoptery/new')}>
+            style={{ borderRadius: radii.md, fontWeight: 600 }} onClick={() => navigate('/helikoptery/new')}>
             Dodaj helikopter
           </Button>
         }
       />
-      <Card style={{ borderRadius: 16 }} styles={{ body: { padding: 0 } }}>
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #2A2A3A' }}>
-          <Input placeholder="Szukaj…" prefix={<SearchOutlined style={{ color: '#7A7A95' }} />}
+      <Card style={{ borderRadius: radii.xl }} styles={{ body: { padding: 0 } }}>
+        <div style={{ padding: '16px 20px', borderBottom: `1px solid ${palette.borderLight}` }}>
+          <Input placeholder="Szukaj…" prefix={<SearchOutlined style={{ color: palette.textMuted }} />}
             value={search} onChange={e => setSearch(e.target.value)} allowClear style={{ maxWidth: 320 }} />
         </div>
         <Table columns={columns} dataSource={filtered} rowKey="id" loading={loading}
