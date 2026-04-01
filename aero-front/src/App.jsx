@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
-import { ConfigProvider, Layout, Button, Drawer, Grid, Avatar, Dropdown, Typography, theme } from 'antd';
+import { ConfigProvider, Layout, Button, Drawer, Grid, Avatar, Dropdown, Typography, Spin, theme } from 'antd';
 import {
   DashboardOutlined, MenuOutlined, AppstoreOutlined,
   RocketOutlined, FileTextOutlined, TeamOutlined,
@@ -9,26 +9,28 @@ import {
 } from '@ant-design/icons';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
-
-import LoginPage             from './pages/LoginPage';
-import DashboardPage         from './pages/DashboardPage';
-import OperacjePage          from './pages/OperacjePage';
-import OperacjaFormPage      from './pages/OperacjaFormPage';
-import OperacjaDetailPage    from './pages/OperacjaDetailPage';
-import ZleceniaPage          from './pages/ZleceniaPage';
-import ZlecenieFormPage      from './pages/ZlecenieFormPage';
-import ZlecenieDetailPage    from './pages/ZlecenieDetailPage';
-import HelikopteryPage       from './pages/HelikopteryPage';
-import HelikopterFormPage    from './pages/HelikopterFormPage';
-import CzlonkowieZalogiPage  from './pages/CzlonkowieZalogiPage';
-import CzlonekZalogiFormPage from './pages/CzlonekZalogiFormPage';
-import LadowiskaPage         from './pages/LadowiskaPage';
-import LadowiskoFormPage     from './pages/LadowiskoFormPage';
-import UzytkownicyPage       from './pages/UzytkownicyPage';
-import UzytkownikFormPage    from './pages/UzytkownikFormPage';
-import TrasyLotowPage        from './pages/TrasyLotowPage';
-import RoleGuard             from './components/RoleGuard';
+import ErrorBoundary from './components/ErrorBoundary';
+import RoleGuard     from './components/RoleGuard';
 import { PSE_BLUE, PSE_RED, lerpColor } from './utils/colors';
+
+// ── Lazy-loaded pages ─────────────────────────────────────────
+const LoginPage             = lazy(() => import('./pages/LoginPage'));
+const DashboardPage         = lazy(() => import('./pages/DashboardPage'));
+const OperacjePage          = lazy(() => import('./pages/OperacjePage'));
+const OperacjaFormPage      = lazy(() => import('./pages/OperacjaFormPage'));
+const OperacjaDetailPage    = lazy(() => import('./pages/OperacjaDetailPage'));
+const ZleceniaPage          = lazy(() => import('./pages/ZleceniaPage'));
+const ZlecenieFormPage      = lazy(() => import('./pages/ZlecenieFormPage'));
+const ZlecenieDetailPage    = lazy(() => import('./pages/ZlecenieDetailPage'));
+const HelikopteryPage       = lazy(() => import('./pages/HelikopteryPage'));
+const HelikopterFormPage    = lazy(() => import('./pages/HelikopterFormPage'));
+const CzlonkowieZalogiPage  = lazy(() => import('./pages/CzlonkowieZalogiPage'));
+const CzlonekZalogiFormPage = lazy(() => import('./pages/CzlonekZalogiFormPage'));
+const LadowiskaPage         = lazy(() => import('./pages/LadowiskaPage'));
+const LadowiskoFormPage     = lazy(() => import('./pages/LadowiskoFormPage'));
+const UzytkownicyPage       = lazy(() => import('./pages/UzytkownicyPage'));
+const UzytkownikFormPage    = lazy(() => import('./pages/UzytkownikFormPage'));
+const TrasyLotowPage        = lazy(() => import('./pages/TrasyLotowPage'));
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
@@ -293,33 +295,41 @@ function AppLayout() {
         </Header>
 
         <Content style={{ padding: 28, background: '#080f1a', minHeight: 'calc(100vh - 60px)' }}>
-          <div className="page-enter">
-            <Routes>
-              <Route path="/"                              element={<DashboardPage />} />
-              <Route path="/operacje"                      element={<OperacjePage />} />
-              <Route path="/operacje/new"                  element={<OperacjaFormPage />} />
-              <Route path="/operacje/edit/:id"             element={<OperacjaFormPage />} />
-              <Route path="/operacje/:id"                  element={<OperacjaDetailPage />} />
-              <Route path="/zlecenia"                      element={<ZleceniaPage />} />
-              <Route path="/zlecenia/new"                  element={<ZlecenieFormPage />} />
-              <Route path="/zlecenia/edit/:id"             element={<ZlecenieFormPage />} />
-              <Route path="/zlecenia/:id"                  element={<ZlecenieDetailPage />} />
-              <Route path="/trasy-lotow"                   element={<TrasyLotowPage />} />
-              <Route path="/helikoptery"                   element={<RoleGuard roles={['Administrator']}><HelikopteryPage /></RoleGuard>} />
-              <Route path="/helikoptery/new"               element={<RoleGuard roles={['Administrator']}><HelikopterFormPage /></RoleGuard>} />
-              <Route path="/helikoptery/edit/:id"          element={<RoleGuard roles={['Administrator']}><HelikopterFormPage /></RoleGuard>} />
-              <Route path="/czlonkowie-zalogi"             element={<RoleGuard roles={['Administrator']}><CzlonkowieZalogiPage /></RoleGuard>} />
-              <Route path="/czlonkowie-zalogi/new"         element={<RoleGuard roles={['Administrator']}><CzlonekZalogiFormPage /></RoleGuard>} />
-              <Route path="/czlonkowie-zalogi/edit/:id"    element={<RoleGuard roles={['Administrator']}><CzlonekZalogiFormPage /></RoleGuard>} />
-              <Route path="/ladowiska"                     element={<RoleGuard roles={['Administrator']}><LadowiskaPage /></RoleGuard>} />
-              <Route path="/ladowiska/new"                 element={<RoleGuard roles={['Administrator']}><LadowiskoFormPage /></RoleGuard>} />
-              <Route path="/ladowiska/edit/:id"            element={<RoleGuard roles={['Administrator']}><LadowiskoFormPage /></RoleGuard>} />
-              <Route path="/uzytkownicy"                   element={<RoleGuard roles={['Administrator']}><UzytkownicyPage /></RoleGuard>} />
-              <Route path="/uzytkownicy/new"               element={<RoleGuard roles={['Administrator']}><UzytkownikFormPage /></RoleGuard>} />
-              <Route path="/uzytkownicy/edit/:id"          element={<RoleGuard roles={['Administrator']}><UzytkownikFormPage /></RoleGuard>} />
-              <Route path="*"                              element={<Navigate to="/" replace />} />
-            </Routes>
-          </div>
+          <ErrorBoundary>
+            <Suspense fallback={
+              <div style={{ display: 'flex', justifyContent: 'center', paddingTop: 120 }}>
+                <Spin size="large" />
+              </div>
+            }>
+              <div className="page-enter">
+                <Routes>
+                  <Route path="/"                              element={<DashboardPage />} />
+                  <Route path="/operacje"                      element={<OperacjePage />} />
+                  <Route path="/operacje/new"                  element={<OperacjaFormPage />} />
+                  <Route path="/operacje/edit/:id"             element={<OperacjaFormPage />} />
+                  <Route path="/operacje/:id"                  element={<OperacjaDetailPage />} />
+                  <Route path="/zlecenia"                      element={<ZleceniaPage />} />
+                  <Route path="/zlecenia/new"                  element={<ZlecenieFormPage />} />
+                  <Route path="/zlecenia/edit/:id"             element={<ZlecenieFormPage />} />
+                  <Route path="/zlecenia/:id"                  element={<ZlecenieDetailPage />} />
+                  <Route path="/trasy-lotow"                   element={<TrasyLotowPage />} />
+                  <Route path="/helikoptery"                   element={<RoleGuard roles={['Administrator']}><HelikopteryPage /></RoleGuard>} />
+                  <Route path="/helikoptery/new"               element={<RoleGuard roles={['Administrator']}><HelikopterFormPage /></RoleGuard>} />
+                  <Route path="/helikoptery/edit/:id"          element={<RoleGuard roles={['Administrator']}><HelikopterFormPage /></RoleGuard>} />
+                  <Route path="/czlonkowie-zalogi"             element={<RoleGuard roles={['Administrator']}><CzlonkowieZalogiPage /></RoleGuard>} />
+                  <Route path="/czlonkowie-zalogi/new"         element={<RoleGuard roles={['Administrator']}><CzlonekZalogiFormPage /></RoleGuard>} />
+                  <Route path="/czlonkowie-zalogi/edit/:id"    element={<RoleGuard roles={['Administrator']}><CzlonekZalogiFormPage /></RoleGuard>} />
+                  <Route path="/ladowiska"                     element={<RoleGuard roles={['Administrator']}><LadowiskaPage /></RoleGuard>} />
+                  <Route path="/ladowiska/new"                 element={<RoleGuard roles={['Administrator']}><LadowiskoFormPage /></RoleGuard>} />
+                  <Route path="/ladowiska/edit/:id"            element={<RoleGuard roles={['Administrator']}><LadowiskoFormPage /></RoleGuard>} />
+                  <Route path="/uzytkownicy"                   element={<RoleGuard roles={['Administrator']}><UzytkownicyPage /></RoleGuard>} />
+                  <Route path="/uzytkownicy/new"               element={<RoleGuard roles={['Administrator']}><UzytkownikFormPage /></RoleGuard>} />
+                  <Route path="/uzytkownicy/edit/:id"          element={<RoleGuard roles={['Administrator']}><UzytkownikFormPage /></RoleGuard>} />
+                  <Route path="*"                              element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
+            </Suspense>
+          </ErrorBoundary>
         </Content>
       </Layout>
     </Layout>
@@ -355,10 +365,18 @@ export default function App() {
     }}>
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/*"     element={<ProtectedApp />} />
-          </Routes>
+          <ErrorBoundary>
+            <Suspense fallback={
+              <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#080f1a' }}>
+                <Spin size="large" />
+              </div>
+            }>
+              <Routes>
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/*"     element={<ProtectedApp />} />
+              </Routes>
+            </Suspense>
+          </ErrorBoundary>
         </AuthProvider>
       </BrowserRouter>
     </ConfigProvider>
