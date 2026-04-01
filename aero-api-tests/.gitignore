@@ -1,0 +1,28 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+*.userprefs
+
+## IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+
+## SQLite
+*.db
+*.db-shm
+*.db-wal
+
+## Logs
+logs/
+
+## Secrets
+appsettings.Production.json
+*.pfx
+
+## OS
+.DS_Store
+Thumbs.db
