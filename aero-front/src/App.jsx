@@ -28,22 +28,11 @@ import UzytkownicyPage       from './pages/UzytkownicyPage';
 import UzytkownikFormPage    from './pages/UzytkownikFormPage';
 import TrasyLotowPage        from './pages/TrasyLotowPage';
 import RoleGuard             from './components/RoleGuard';
+import { PSE_BLUE, PSE_RED, lerpColor } from './utils/colors';
 
 const { Header, Sider, Content } = Layout;
 const { useBreakpoint } = Grid;
 const { Text } = Typography;
-
-// ── Kolory PSE ────────────────────────────────────────────────
-const PSE_BLUE = [26,  95, 168];   // #1a5fa8
-const PSE_RED  = [167, 30,  45];   // #a71e2d
-
-/** Interpoluje kolor między granatem a czerwienią PSE wg pozycji t ∈ [0, 1] */
-function interpolateColor(t) {
-  const r = Math.round(PSE_BLUE[0] + (PSE_RED[0] - PSE_BLUE[0]) * t);
-  const g = Math.round(PSE_BLUE[1] + (PSE_RED[1] - PSE_BLUE[1]) * t);
-  const b = Math.round(PSE_BLUE[2] + (PSE_RED[2] - PSE_BLUE[2]) * t);
-  return `rgb(${r},${g},${b})`;
-}
 
 const NAV_ITEMS = [
   { key: '/',                   icon: <DashboardOutlined />, label: 'Dashboard' },
@@ -80,7 +69,7 @@ function GradientMenu({ items, selectedKey, onSelect }) {
         // Oblicz pozycję w gradiencie na podstawie miejsca w navItems
         const navIdx = navItems.findIndex(n => n.key === item.key);
         const t      = total > 1 ? navIdx / (total - 1) : 0;
-        const color  = interpolateColor(t);
+        const color  = lerpColor(t);
         const isSelected = selectedKey === item.key;
 
         return (

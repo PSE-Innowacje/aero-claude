@@ -9,37 +9,10 @@ import {
 import { getOperacje, getZlecenia, getHelikoptery, getCzlonkowie } from '../services/api';
 import { StatusOperacjiTag, StatusZleceniaTag } from '../components/StatusTag';
 import { useAuth } from '../context/AuthContext';
+import { cardGradient } from '../utils/colors';
+import { StatusOperacji, StatusZlecenia } from '../constants/statusy';
 
 const { Title, Text } = Typography;
-
-// ── Interpolacja kolorów PSE (granat → czerwony) ─────────────
-const PSE_BLUE = [26,  95, 168];  // #1a5fa8
-const PSE_RED  = [167, 30,  45];  // #a71e2d
-
-function lerpColor(a, b, t) {
-  return [
-    Math.round(a[0] + (b[0] - a[0]) * t),
-    Math.round(a[1] + (b[1] - a[1]) * t),
-    Math.round(a[2] + (b[2] - a[2]) * t),
-  ];
-}
-
-function toHex([r, g, b]) {
-  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
-}
-
-/**
- * Traktuje wszystkie karty jako jeden ciągły gradient #1a5fa8 → #a71e2d.
- * Karta idx zajmuje wycinek [idx/total, (idx+1)/total] tego pasma,
- * więc kolor końca karty N = kolor początku karty N+1 — przejście jest ciągłe.
- */
-function cardGradient(idx, total) {
-  const tStart = idx / total;
-  const tEnd   = (idx + 1) / total;
-  const cStart = lerpColor(PSE_BLUE, PSE_RED, tStart);
-  const cEnd   = lerpColor(PSE_BLUE, PSE_RED, tEnd);
-  return `linear-gradient(90deg, ${toHex(cStart)} 0%, ${toHex(cEnd)} 100%)`;
-}
 
 const STAT_CARDS = [
   {
@@ -81,8 +54,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const reqs = [
-      getOperacje({ statusId: 3, rozmiarStrony: 5 }),
-      getZlecenia({ statusId: 2, rozmiarStrony: 5 }),
+      getOperacje({ statusId: StatusOperacji.POTWIERDZONE_DO_PLANU, rozmiarStrony: 5 }),
+      getZlecenia({ statusId: StatusZlecenia.PRZEKAZANE_DO_AKCEPTACJI, rozmiarStrony: 5 }),
       isAdmin ? getHelikoptery() : Promise.resolve([]),
       isAdmin ? getCzlonkowie()  : Promise.resolve([]),
     ];
