@@ -32,6 +32,10 @@ try
     var builder = WebApplication.CreateBuilder(args);
     builder.Host.UseSerilog();
 
+    // ── Limity Kestrel ───────────────────────────────────────
+    builder.WebHost.ConfigureKestrel(o =>
+        o.Limits.MaxRequestBodySize = 5 * 1024 * 1024); // 5 MB
+
     // ── Baza danych ──────────────────────────────────────────
     builder.Services.AddDbContext<LotyDbContext>(opt =>
         opt.UseSqlite(
@@ -41,6 +45,14 @@ try
     // ── Serwisy aplikacji ─────────────────────────────────────
     builder.Services.AddScoped<IAuthService, AuthService>();
     builder.Services.AddScoped<INumeratorService, NumeratorService>();
+    builder.Services.AddScoped<IOperacjaService, OperacjaService>();
+    builder.Services.AddScoped<IZlecenieService, ZlecenieService>();
+    builder.Services.AddScoped<IUzytkownikService, UzytkownikService>();
+    builder.Services.AddScoped<IHelikopterService, HelikopterService>();
+    builder.Services.AddScoped<ICzlonekZalogiService, CzlonekZalogiService>();
+    builder.Services.AddScoped<ILadowiskoService, LadowiskoService>();
+    builder.Services.AddScoped<ISlownikService, SlownikService>();
+    builder.Services.AddHostedService<RefreshTokenCleanupService>();
 
     // ── FluentValidation ──────────────────────────────────────
     builder.Services.AddFluentValidationAutoValidation();
@@ -92,7 +104,12 @@ try
     });
 
     // ── Kontrolery z konfiguracją JSON ────────────────────────
-    builder.Services.AddControllers()
+    builder.Services.AddControllers(opt =>
+        {
+            // Globalny filtr [Authorize] — każdy endpoint wymaga uwierzytelnienia,
+            // chyba że oznaczony [AllowAnonymous].
+            opt.Filters.Add(new Microsoft.AspNetCore.Mvc.Authorization.AuthorizeFilter());
+        })
         .AddJsonOptions(opt =>
         {
             opt.JsonSerializerOptions.PropertyNamingPolicy =
@@ -150,8 +167,8 @@ try
             .AllowAnyMethod());
         opt.AddPolicy("Prod", p => p
             .WithOrigins(builder.Configuration.GetSection("Cors:Origins").Get<string[]>() ?? [])
-            .AllowAnyHeader()
-            .AllowAnyMethod());
+            .WithHeaders("Content-Type", "Authorization")
+            .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE"));
     });
 
     // ── Health checks ─────────────────────────────────────────
@@ -201,7 +218,7 @@ try
     app.UseAuthorization();
     app.MapControllers();
 
-    // Health check — publiczny endpoint bez szczegółów, szczegółowy z autoryzacją
+    // Health check — publiczny endpoint bez szczegółów
     app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
     {
         ResponseWriter = async (context, report) =>
@@ -210,42 +227,59 @@ try
             var result = new { status = report.Status.ToString() };
             await context.Response.WriteAsJsonAsync(result);
         }
-    });
+    }).AllowAnonymous();
 
-    // ── DB Init ───────────────────────────────────────────────
+    // ── DB Init — migracje EF Core ──────────────────────────
     using (var scope = app.Services.CreateScope())
     {
         var db = scope.ServiceProvider.GetRequiredService<LotyDbContext>();
-        db.Database.EnsureCreated();
 
-        // Dodaj tabelę refresh_tokens jeśli nie istnieje (istniejąca baza)
+        // Zastosuj wszystkie oczekujące migracje.
+        // Przy pierwszym uruchomieniu na istniejącej bazie wykonaj:
+        //   dotnet ef migrations add InitialCreate
+        //   dotnet ef database update
+        // Schemat zarządzany wyłącznie przez migracje — nie używamy EnsureCreated ani raw SQL.
+        db.Database.Migrate();
+
+        // Tabela licznikowa — tworzona bezpiecznie niezależnie od stanu migracji.
+        // CREATE TABLE IF NOT EXISTS jest idempotentne — nie nadpisze istniejącej tabeli.
         db.Database.ExecuteSqlRaw("""
-            CREATE TABLE IF NOT EXISTS refresh_tokens (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                token TEXT NOT NULL,
-                uzytkownik_id INTEGER NOT NULL,
-                utworzono_utc TEXT NOT NULL,
-                wygasa_utc TEXT NOT NULL,
-                odwolano_utc TEXT NULL,
-                zastapione_przez TEXT NULL,
-                FOREIGN KEY (uzytkownik_id) REFERENCES uzytkownicy(Id) ON DELETE CASCADE
-            )
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_refresh_token_unique ON refresh_tokens(token)
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE INDEX IF NOT EXISTS idx_refresh_token_user ON refresh_tokens(uzytkownik_id)
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_operacje_numer_unique ON planowane_operacje(numer)
-            """);
-        db.Database.ExecuteSqlRaw("""
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_zlecenia_numer_unique ON zlecenia_na_lot(numer)
+            CREATE TABLE IF NOT EXISTS numeratory (
+                prefix TEXT NOT NULL,
+                rok    INTEGER NOT NULL,
+                ostatnia_wartosc INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (prefix, rok)
+            );
             """);
 
-        Log.Information("Baza danych: {Source}",
-            db.Database.GetConnectionString());
+        // Synchronizacja numeratorów z istniejącymi danymi w tabelach docelowych.
+        // Zapobiega kolizji UNIQUE gdy numerator startuje od 0, a tabela ma już rekordy.
+        db.Database.ExecuteSqlRaw("""
+            INSERT INTO numeratory (prefix, rok, ostatnia_wartosc)
+            SELECT 'OP', CAST(SUBSTR(numer, 4, 4) AS INTEGER),
+                   MAX(CAST(SUBSTR(numer, 9) AS INTEGER))
+            FROM planowane_operacje
+            WHERE numer LIKE 'OP-____-%'
+            GROUP BY SUBSTR(numer, 4, 4)
+            ON CONFLICT(prefix, rok) DO UPDATE
+                SET ostatnia_wartosc = MAX(ostatnia_wartosc, excluded.ostatnia_wartosc);
+            """);
+
+        db.Database.ExecuteSqlRaw("""
+            INSERT INTO numeratory (prefix, rok, ostatnia_wartosc)
+            SELECT 'ZL', CAST(SUBSTR(numer, 4, 4) AS INTEGER),
+                   MAX(CAST(SUBSTR(numer, 9) AS INTEGER))
+            FROM zlecenia_na_lot
+            WHERE numer LIKE 'ZL-____-%'
+            GROUP BY SUBSTR(numer, 4, 4)
+            ON CONFLICT(prefix, rok) DO UPDATE
+                SET ostatnia_wartosc = MAX(ostatnia_wartosc, excluded.ostatnia_wartosc);
+            """);
+
+        var connStr = db.Database.GetConnectionString() ?? "";
+        var maskedConnStr = System.Text.RegularExpressions.Regex.Replace(
+            connStr, @"(?i)(password|pwd)\s*=\s*[^;]*", "$1=***");
+        Log.Information("Baza danych: {Source} (migracje zastosowane)", maskedConnStr);
     }
 
     Log.Information("Aplikacja uruchomiona w trybie {Env}", app.Environment.EnvironmentName);

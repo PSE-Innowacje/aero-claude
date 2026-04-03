@@ -35,6 +35,9 @@ public class LotyDbContext(DbContextOptions<LotyDbContext> options) : DbContext(
     // ── Bezpieczeństwo ───────────────────────────────────────
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
+    // ── Numeratory ───────────────────────────────────────────
+    public DbSet<Numerator> Numeratory => Set<Numerator>();
+
     protected override void OnModelCreating(ModelBuilder mb)
     {
         base.OnModelCreating(mb);
@@ -289,6 +292,16 @@ public class LotyDbContext(DbContextOptions<LotyDbContext> options) : DbContext(
             e.HasIndex(x => x.Token).IsUnique().HasDatabaseName("idx_refresh_token_unique");
             e.HasIndex(x => x.UzytkownikId).HasDatabaseName("idx_refresh_token_user");
             e.HasOne(x => x.Uzytkownik).WithMany().HasForeignKey(x => x.UzytkownikId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // Numerator — tabela licznikowa
+        mb.Entity<Numerator>(e =>
+        {
+            e.ToTable("numeratory");
+            e.HasKey(x => new { x.Prefix, x.Rok });
+            e.Property(x => x.Prefix).HasColumnName("prefix").HasMaxLength(5);
+            e.Property(x => x.Rok).HasColumnName("rok");
+            e.Property(x => x.OstatniaWartosc).HasColumnName("ostatnia_wartosc");
         });
     }
 }

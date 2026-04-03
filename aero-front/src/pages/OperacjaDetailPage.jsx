@@ -16,21 +16,22 @@ import {
 import { StatusOperacjiTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { StatusOperacji } from '../constants/statusy';
 
 const { TextArea } = Input;
 const { Text, Title } = Typography;
 const { Option } = Select;
 
-// Status przejścia per rola
+// Status przejścia per rola — używa stałych z constants/statusy
 const STATUS_ACTIONS = {
   'Osoba nadzorująca': [
-    { fromStatus: 1, toStatus: 2, label: 'Odrzuć',           danger: true,  icon: <CloseOutlined /> },
-    { fromStatus: 1, toStatus: 3, label: 'Potwierdź do planu', type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: StatusOperacji.WPROWADZONE, toStatus: StatusOperacji.ODRZUCONE,            label: 'Odrzuć',           danger: true,  icon: <CloseOutlined /> },
+    { fromStatus: StatusOperacji.WPROWADZONE, toStatus: StatusOperacji.POTWIERDZONE_DO_PLANU, label: 'Potwierdź do planu', type: 'primary', icon: <CheckOutlined /> },
   ],
   'Osoba planująca': [
-    { fromStatus: 1, toStatus: 7, label: 'Rezygnuj', danger: true, icon: <StopOutlined /> },
-    { fromStatus: 3, toStatus: 7, label: 'Rezygnuj', danger: true, icon: <StopOutlined /> },
-    { fromStatus: 4, toStatus: 7, label: 'Rezygnuj', danger: true, icon: <StopOutlined /> },
+    { fromStatus: StatusOperacji.WPROWADZONE,             toStatus: StatusOperacji.REZYGNACJA, label: 'Rezygnuj', danger: true, icon: <StopOutlined /> },
+    { fromStatus: StatusOperacji.POTWIERDZONE_DO_PLANU,   toStatus: StatusOperacji.REZYGNACJA, label: 'Rezygnuj', danger: true, icon: <StopOutlined /> },
+    { fromStatus: StatusOperacji.ZAPLANOWANE_DO_ZLECENIA, toStatus: StatusOperacji.REZYGNACJA, label: 'Rezygnuj', danger: true, icon: <StopOutlined /> },
   ],
 };
 
@@ -243,7 +244,7 @@ export default function OperacjaDetailPage() {
         okButtonProps={{ danger: statusModal.action?.danger }}
       >
         <p style={{ marginBottom: 16, color: '#7A7A95' }}>
-          {statusModal.action?.toStatus === 3
+          {statusModal.action?.toStatus === StatusOperacji.POTWIERDZONE_DO_PLANU
             ? 'Upewnij się, że planowane daty zostały ustawione przed potwierdzeniem.'
             : 'Czy na pewno chcesz zmienić status tej operacji?'}
         </p>

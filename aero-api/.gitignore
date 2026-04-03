@@ -12,8 +12,10 @@ obj/
 *.swp
 
 ## SQLite
+*.db
 *.db-shm
 *.db-wal
+*.sqbpro
 
 ## Logs
 logs/

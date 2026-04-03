@@ -13,28 +13,29 @@ import { getZlecenieById, zmienStatusZlecenia, getHistoriaZlecenia, extractApiEr
 import { StatusZleceniaTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
 import { useAuth } from '../context/AuthContext';
+import { StatusZlecenia as SZ } from '../constants/statusy';
 
 const { Text } = Typography;
 
-// Dozwolone przejścia statusów wg roli
+// Dozwolone przejścia statusów wg roli — stałe z constants/statusy
 const STATUS_ACTIONS = {
   'Pilot': [
-    { fromStatus: 1, toStatus: 2, label: 'Przekaż do akceptacji', type: 'primary', icon: <RocketOutlined /> },
-    { fromStatus: 4, toStatus: 5, label: 'Zrealizowane w części',   type: 'primary', icon: <CheckOutlined /> },
-    { fromStatus: 4, toStatus: 6, label: 'Zrealizowane w całości',  type: 'primary', icon: <CheckCircleOutlined /> },
-    { fromStatus: 4, toStatus: 7, label: 'Nie zrealizowane',        danger: true,    icon: <MinusCircleOutlined /> },
+    { fromStatus: SZ.WPROWADZONE,  toStatus: SZ.PRZEKAZANE_DO_AKCEPTACJI, label: 'Przekaż do akceptacji', type: 'primary', icon: <RocketOutlined /> },
+    { fromStatus: SZ.ZAAKCEPTOWANE, toStatus: SZ.ZREALIZOWANE_W_CZESCI,   label: 'Zrealizowane w części',   type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: SZ.ZAAKCEPTOWANE, toStatus: SZ.ZREALIZOWANE_W_CALOSCI,  label: 'Zrealizowane w całości',  type: 'primary', icon: <CheckCircleOutlined /> },
+    { fromStatus: SZ.ZAAKCEPTOWANE, toStatus: SZ.NIE_ZREALIZOWANE,        label: 'Nie zrealizowane',        danger: true,    icon: <MinusCircleOutlined /> },
   ],
   'Osoba nadzorująca': [
-    { fromStatus: 2, toStatus: 3, label: 'Odrzuć',      danger: true,    icon: <CloseOutlined /> },
-    { fromStatus: 2, toStatus: 4, label: 'Zaakceptuj',  type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: SZ.PRZEKAZANE_DO_AKCEPTACJI, toStatus: SZ.ODRZUCONE,     label: 'Odrzuć',      danger: true,    icon: <CloseOutlined /> },
+    { fromStatus: SZ.PRZEKAZANE_DO_AKCEPTACJI, toStatus: SZ.ZAAKCEPTOWANE,  label: 'Zaakceptuj',  type: 'primary', icon: <CheckOutlined /> },
   ],
   'Administrator': [
-    { fromStatus: 1, toStatus: 2, label: 'Przekaż do akceptacji', type: 'primary', icon: <RocketOutlined /> },
-    { fromStatus: 2, toStatus: 3, label: 'Odrzuć',                danger: true,    icon: <CloseOutlined /> },
-    { fromStatus: 2, toStatus: 4, label: 'Zaakceptuj',            type: 'primary', icon: <CheckOutlined /> },
-    { fromStatus: 4, toStatus: 5, label: 'Zrealizowane w części',  type: 'primary', icon: <CheckOutlined /> },
-    { fromStatus: 4, toStatus: 6, label: 'Zrealizowane w całości', type: 'primary', icon: <CheckCircleOutlined /> },
-    { fromStatus: 4, toStatus: 7, label: 'Nie zrealizowane',       danger: true,    icon: <MinusCircleOutlined /> },
+    { fromStatus: SZ.WPROWADZONE,              toStatus: SZ.PRZEKAZANE_DO_AKCEPTACJI, label: 'Przekaż do akceptacji', type: 'primary', icon: <RocketOutlined /> },
+    { fromStatus: SZ.PRZEKAZANE_DO_AKCEPTACJI, toStatus: SZ.ODRZUCONE,                label: 'Odrzuć',                danger: true,    icon: <CloseOutlined /> },
+    { fromStatus: SZ.PRZEKAZANE_DO_AKCEPTACJI, toStatus: SZ.ZAAKCEPTOWANE,             label: 'Zaakceptuj',            type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: SZ.ZAAKCEPTOWANE,            toStatus: SZ.ZREALIZOWANE_W_CZESCI,     label: 'Zrealizowane w części',  type: 'primary', icon: <CheckOutlined /> },
+    { fromStatus: SZ.ZAAKCEPTOWANE,            toStatus: SZ.ZREALIZOWANE_W_CALOSCI,    label: 'Zrealizowane w całości', type: 'primary', icon: <CheckCircleOutlined /> },
+    { fromStatus: SZ.ZAAKCEPTOWANE,            toStatus: SZ.NIE_ZREALIZOWANE,          label: 'Nie zrealizowane',       danger: true,    icon: <MinusCircleOutlined /> },
   ],
 };
 
@@ -201,7 +202,7 @@ export default function ZlecenieDetailPage() {
         okButtonProps={{ danger: modal.action?.danger, type: modal.action?.type ?? 'default' }}
       >
         <p style={{ color: '#7A7A95' }}>
-          {modal.action?.toStatus === 6 || modal.action?.toStatus === 5
+          {modal.action?.toStatus === SZ.ZREALIZOWANE_W_CALOSCI || modal.action?.toStatus === SZ.ZREALIZOWANE_W_CZESCI
             ? 'Upewnij się, że rzeczywiste czasy startu i lądowania są uzupełnione.'
             : 'Czy na pewno chcesz zmienić status tego zlecenia?'}
         </p>

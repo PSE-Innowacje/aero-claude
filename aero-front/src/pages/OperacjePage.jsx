@@ -9,6 +9,7 @@ import {
   SearchOutlined, FileTextOutlined,
 } from '@ant-design/icons';
 import { getOperacje, getOperacjaById, getStatusyOperacji, extractApiError } from '../services/api';
+import { StatusOperacji } from '../constants/statusy';
 import TrasaMapWidget from '../components/TrasaMapWidget';
 import { StatusOperacjiTag } from '../components/StatusTag';
 import PageHeader from '../components/PageHeader';
@@ -26,7 +27,7 @@ export default function OperacjePage() {
   const [data,     setData]     = useState({ items: [], lacznaLiczba: 0 });
   const [statusy,  setStatusy]  = useState([]);
   const [loading,  setLoading]  = useState(false);
-  const [filters,  setFilters]  = useState({ statusId: 3, strona: 1, rozmiarStrony: 20 });
+  const [filters,  setFilters]  = useState({ statusId: StatusOperacji.POTWIERDZONE_DO_PLANU, strona: 1, rozmiarStrony: 20 });
   const [search,        setSearch]        = useState('');
   const [selectedId,    setSelectedId]    = useState(null);
   const [selectedKml,   setSelectedKml]   = useState(null);
@@ -180,7 +181,7 @@ export default function OperacjePage() {
                 placeholder="Status"
                 value={filters.statusId}
                 allowClear
-                onChange={v => setFilters(f => ({ ...f, statusId: v ?? 3, strona: 1 }))}
+                onChange={v => setFilters(f => ({ ...f, statusId: v ?? StatusOperacji.POTWIERDZONE_DO_PLANU, strona: 1 }))}
               >
                 {statusy.map(s => <Option key={s.id} value={s.id}>{s.nazwa}</Option>)}
               </Select>

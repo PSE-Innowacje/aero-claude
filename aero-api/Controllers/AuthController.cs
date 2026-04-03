@@ -1,16 +1,15 @@
 using LotyApi.Common;
-using LotyApi.Data;
 using LotyApi.DTOs;
 using LotyApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.EntityFrameworkCore;
 
 namespace LotyApi.Controllers;
 
 [ApiController]
 [Route("api/auth")]
+[AllowAnonymous]
 [Produces("application/json")]
 public class AuthController(IAuthService authService) : ControllerBase
 {
@@ -20,9 +19,9 @@ public class AuthController(IAuthService authService) : ControllerBase
     [ProducesResponseType(typeof(ApiResult<LoginResponseDto>), 200)]
     [ProducesResponseType(401)]
     [ProducesResponseType(429)]
-    public async Task<IActionResult> Login([FromBody] LoginDto dto)
+    public async Task<IActionResult> Login([FromBody] LoginDto dto, CancellationToken ct)
     {
-        var result = await authService.LoginAsync(dto);
+        var result = await authService.LoginAsync(dto, ct);
         if (result is null)
             return Unauthorized(ApiResult.Fail("Nieprawidłowy email lub hasło."));
         return Ok(ApiResult<LoginResponseDto>.Ok(result));
@@ -33,9 +32,9 @@ public class AuthController(IAuthService authService) : ControllerBase
     [EnableRateLimiting("login")]
     [ProducesResponseType(typeof(ApiResult<LoginResponseDto>), 200)]
     [ProducesResponseType(401)]
-    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto dto)
+    public async Task<IActionResult> Refresh([FromBody] RefreshTokenDto dto, CancellationToken ct)
     {
-        var result = await authService.RefreshAsync(dto.RefreshToken);
+        var result = await authService.RefreshAsync(dto.RefreshToken, ct);
         if (result is null)
             return Unauthorized(ApiResult.Fail("Refresh token jest nieprawidłowy lub wygasł."));
         return Ok(ApiResult<LoginResponseDto>.Ok(result));
@@ -44,10 +43,12 @@ public class AuthController(IAuthService authService) : ControllerBase
     /// <summary>Wylogowanie — odwołuje refresh token.</summary>
     [HttpPost("logout")]
     [Authorize]
+    [EnableRateLimiting("login")]
     [ProducesResponseType(204)]
-    public async Task<IActionResult> Logout([FromBody] LogoutDto dto)
+    public async Task<IActionResult> Logout([FromBody] LogoutDto dto, CancellationToken ct)
     {
-        await authService.RevokeAsync(dto.RefreshToken);
+        var userId = this.GetCurrentUser().Id;
+        await authService.RevokeAsync(dto.RefreshToken, userId, ct);
         return NoContent();
     }
 }
@@ -58,40 +59,30 @@ public class AuthController(IAuthService authService) : ControllerBase
 [Route("api/slowniki")]
 [Authorize]
 [Produces("application/json")]
-public class SlownikiController(LotyDbContext db) : ControllerBase
+public class SlownikiController(ISlownikService service) : ControllerBase
 {
     [HttpGet("role-uzytkownikow")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> RoleUzytkownikow(CancellationToken ct) =>
-        Ok(ApiResult<List<SlownikDto>>.Ok(
-            await db.SlownikRolUzytkownikow.AsNoTracking()
-                .Select(x => new SlownikDto(x.Id, x.Nazwa)).ToListAsync(ct)));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.RoleUzytkownikow, ct));
 
     [HttpGet("role-zalogi")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> RoleZalogi(CancellationToken ct) =>
-        Ok(ApiResult<List<SlownikDto>>.Ok(
-            await db.SlownikRolZalogi.AsNoTracking()
-                .Select(x => new SlownikDto(x.Id, x.Nazwa)).ToListAsync(ct)));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.RoleZalogi, ct));
 
     [HttpGet("rodzaje-czynnosci")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> RodzajeCzynnosci(CancellationToken ct) =>
-        Ok(ApiResult<List<SlownikDto>>.Ok(
-            await db.SlownikRodzajowCzynnosci.AsNoTracking()
-                .Select(x => new SlownikDto(x.Id, x.Nazwa)).ToListAsync(ct)));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.RodzajeCzynnosci, ct));
 
     [HttpGet("statusy-operacji")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> StatusyOperacji(CancellationToken ct) =>
-        Ok(ApiResult<List<SlownikDto>>.Ok(
-            await db.SlownikStatusowOperacji.AsNoTracking()
-                .Select(x => new SlownikDto(x.Id, x.Nazwa)).ToListAsync(ct)));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.StatusyOperacji, ct));
 
     [HttpGet("statusy-zlecen")]
     [ProducesResponseType(typeof(ApiResult<List<SlownikDto>>), 200)]
     public async Task<IActionResult> StatusyZlecen(CancellationToken ct) =>
-        Ok(ApiResult<List<SlownikDto>>.Ok(
-            await db.SlownikStatusowZlecen.AsNoTracking()
-                .Select(x => new SlownikDto(x.Id, x.Nazwa)).ToListAsync(ct)));
+        this.ToActionResult(await service.PobierzAsync(TypSlownika.StatusyZlecen, ct));
 }
